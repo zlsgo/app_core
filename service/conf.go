@@ -92,13 +92,12 @@ func NewConf() *Conf {
 				for i := 0; i < v.Len(); i++ {
 					maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
 				}
-
-				cfg.SetDefault(t.Elem().Name(), maps)
+				cfg.SetDefault(getConfName(v), maps)
 			}
 			continue
 		}
 
-		cfg.SetDefault(t.Name(), toMap(isPrt, t, v))
+		cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
 	}
 
 	utils.Fatal(cfg.Read())
@@ -109,4 +108,25 @@ func NewConf() *Conf {
 
 func (c *Conf) Core() *viper.Viper {
 	return c.cfg.Core
+}
+
+func getConfName(t reflect.Value) string {
+	var key string
+	getConfKey := t.MethodByName("ConfKey")
+	if getConfKey.IsValid() {
+		g, ok := getConfKey.Interface().(func() string)
+		if ok {
+			key = g()
+		}
+	}
+
+	if key == "" {
+		if t.Kind() == reflect.Slice {
+			key = t.Type().Elem().Name()
+		} else {
+			key = t.Type().Name()
+		}
+	}
+
+	return key
 }
