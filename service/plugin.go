@@ -62,18 +62,20 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 				return p.Load()
 			})
 			if err != nil {
-				return zerror.With(err, name)
+				return zerror.With(err, name+" failed to Load")
 			}
 
 			PrintLog("Plugin", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 			err = zerror.TryCatch(func() error {
 				return p.Start()
 			})
+			if err != nil {
+				return zerror.With(err, name+" failed to Start")
+			}
 
 			start = append(start, func() error {
-
 				if err := zerror.TryCatch(func() error { return p.Done() }); err != nil {
-					return zerror.With(err, name)
+					return zerror.With(err, name+" failed to Done")
 				}
 				return nil
 			})
