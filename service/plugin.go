@@ -45,9 +45,6 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 				name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
 			}
 
-			*tasks = append(*tasks, p.Tasks()...)
-			*controller = append(*controller, p.Controller()...)
-
 			conf := reflect.Indirect(val).FieldByName("Conf")
 			if conf.IsValid() && conf.Type().String() == "*service.Conf" {
 				conf.Set(reflect.ValueOf(app.Conf))
@@ -74,6 +71,8 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 			}
 
 			start = append(start, func() error {
+				*tasks = append(*tasks, p.Tasks()...)
+				*controller = append(*controller, p.Controller()...)
 				if err := zerror.TryCatch(func() error { return p.Done() }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
