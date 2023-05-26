@@ -22,7 +22,7 @@ type (
 	}
 	// Controller 控制器函数
 	Controller interface {
-		Init(r *znet.Engine)
+		Init(r *znet.Engine) error
 	}
 	// RouterBeforeProcess 控制器前置处理
 	RouterBeforeProcess func(r *Web, app *App)
