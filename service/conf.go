@@ -60,7 +60,10 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 }
 
 func NewConf() *Conf {
-	cfg := gconf.New(fileName)
+	cfg := gconf.New(fileName, func(o *gconf.Option) {
+		o.EnvPrefix = AppName
+		o.PrimaryAliss = "dev"
+	})
 	c := &Conf{cfg: cfg}
 
 	toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
