@@ -113,6 +113,10 @@ func (c *Conf) Core() *viper.Viper {
 	return c.cfg.Core
 }
 
+func (c *Conf) Write() error {
+	return c.cfg.Write()
+}
+
 func getConfName(t reflect.Value) string {
 	var key string
 	getConfKey := t.MethodByName("ConfKey")
