@@ -16,13 +16,15 @@ type App struct {
 
 var Global *App
 
-func NewApp(conf *Conf, di zdi.Injector) *App {
-	Global = &App{
-		DI:   di,
-		Conf: conf,
-		Log:  initLog(conf),
+func NewApp() func(conf *Conf, di zdi.Injector) *App {
+	return func(conf *Conf, di zdi.Injector) *App {
+		Global = &App{
+			DI:   di,
+			Conf: conf,
+			Log:  initLog(conf),
+		}
+		return Global
 	}
-	return Global
 }
 
 func initLog(c *Conf) *zlog.Logger {

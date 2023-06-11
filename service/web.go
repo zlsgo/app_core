@@ -44,39 +44,41 @@ func (w *Web) GetHijack() []func(c *znet.Context) bool {
 }
 
 // NewWeb 初始化 WEB
-func NewWeb(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
-	r := znet.New()
-	r.Log = app.Log
-	r.AllowQuerySemicolons = true
-	zlog.Log = r.Log
+func NewWeb() func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
+	return func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
+		r := znet.New()
+		r.Log = app.Log
+		r.AllowQuerySemicolons = true
+		zlog.Log = r.Log
 
-	r.BindStructSuffix = ""
-	r.BindStructDelimiter = "-"
-	r.SetAddr(app.Conf.Base.Port)
+		r.BindStructSuffix = ""
+		r.BindStructDelimiter = "-"
+		r.SetAddr(app.Conf.Base.Port)
 
-	isDebug := app.Conf.Base.Debug
-	if isDebug {
-		r.SetMode(znet.DebugMode)
-	} else {
-		r.SetMode(znet.ProdMode)
+		isDebug := app.Conf.Base.Debug
+		if isDebug {
+			r.SetMode(znet.DebugMode)
+		} else {
+			r.SetMode(znet.ProdMode)
+		}
+
+		if app.Conf.Base.Pprof {
+			zpprof.Register(r, app.Conf.Base.PprofToken)
+		}
+
+		var errHandler znet.ErrHandlerFunc
+		if err := app.DI.Resolve(&errHandler); err == nil {
+			r.Use(znet.RewriteErrorHandler(errHandler))
+		}
+
+		for _, middleware := range middlewares {
+			r.Use(middleware)
+		}
+
+		return &Web{
+			Engine: r,
+		}, r
 	}
-
-	if app.Conf.Base.Pprof {
-		zpprof.Register(r, app.Conf.Base.PprofToken)
-	}
-
-	var errHandler znet.ErrHandlerFunc
-	if err := app.DI.Resolve(&errHandler); err == nil {
-		r.Use(znet.RewriteErrorHandler(errHandler))
-	}
-
-	for _, middleware := range middlewares {
-		r.Use(middleware)
-	}
-
-	return &Web{
-		Engine: r,
-	}, r
 }
 
 func RunWeb(r *Web, app *App, controllers *[]Controller) {
