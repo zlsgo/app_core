@@ -59,54 +59,60 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 	return c.Core().UnmarshalKey(key, &rawVal)
 }
 
-func NewConf() *Conf {
+func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 	cfg := gconf.New(fileName, func(o *gconf.Option) {
 		o.EnvPrefix = AppName
+		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
+		for _, f := range opt {
+			f(o)
+		}
 	})
-	c := &Conf{cfg: cfg}
 
-	toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
-		m := make(map[string]interface{})
+	return func() *Conf {
+		c := &Conf{cfg: cfg}
+		toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
+			m := make(map[string]interface{})
 
-		for i := 0; i < t.NumField(); i++ {
-			value, field := v.Field(i), t.Field(i)
-			if value.IsZero() {
+			for i := 0; i < t.NumField(); i++ {
+				value, field := v.Field(i), t.Field(i)
+				if value.IsZero() {
+					continue
+				}
+
+				m[field.Name] = v.Field(i).Interface()
+			}
+			return m
+		}
+		for _, c := range DefaultConf {
+			t := reflect.TypeOf(c)
+
+			v := reflect.ValueOf(c)
+			isPrt := t.Kind() == reflect.Ptr
+			if isPrt {
+				t = t.Elem()
+				v = v.Elem()
+			}
+
+			if t.Kind() != reflect.Struct {
+				if t.Kind() == reflect.Slice {
+					maps := make([]map[string]interface{}, 0)
+					for i := 0; i < v.Len(); i++ {
+						maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
+					}
+					cfg.SetDefault(getConfName(v), maps)
+				}
 				continue
 			}
 
-			m[field.Name] = v.Field(i).Interface()
+			cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
 		}
-		return m
+
+		utils.Fatal(cfg.Read())
+		utils.Fatal(cfg.Unmarshal(&c))
+
+		return c
 	}
-	for _, c := range DefaultConf {
-		t := reflect.TypeOf(c)
-
-		v := reflect.ValueOf(c)
-		isPrt := t.Kind() == reflect.Ptr
-		if isPrt {
-			t = t.Elem()
-			v = v.Elem()
-		}
-
-		if t.Kind() != reflect.Struct {
-			if t.Kind() == reflect.Slice {
-				maps := make([]map[string]interface{}, 0)
-				for i := 0; i < v.Len(); i++ {
-					maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
-				}
-				cfg.SetDefault(getConfName(v), maps)
-			}
-			continue
-		}
-
-		cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
-	}
-
-	utils.Fatal(cfg.Read())
-	utils.Fatal(cfg.Unmarshal(&c))
-
-	return c
 }
 
 func (c *Conf) Core() *viper.Viper {
@@ -115,6 +121,10 @@ func (c *Conf) Core() *viper.Viper {
 
 func (c *Conf) Write() error {
 	return c.cfg.Write()
+}
+
+func (c *Conf) Set(key string, value interface{}) {
+	c.cfg.Set(key, value)
 }
 
 func getConfName(t reflect.Value) string {
