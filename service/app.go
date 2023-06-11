@@ -9,7 +9,7 @@ import (
 
 // App 控制器关联对象
 type App struct {
-	DI   zdi.Injector
+	DI   zdi.Invoker
 	Conf *Conf
 	Log  *zlog.Logger
 }
