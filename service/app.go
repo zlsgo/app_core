@@ -16,7 +16,17 @@ type App struct {
 
 var Global *App
 
-func NewApp() func(conf *Conf, di zdi.Injector) *App {
+func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
+	b := BaseConf{
+		Debug: debug,
+		Zone:  8,
+		Port:  "3788",
+	}
+	for _, o := range opt {
+		o(&b)
+	}
+	DefaultConf = append(DefaultConf, b)
+
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{
 			DI:   di,

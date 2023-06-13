@@ -7,9 +7,9 @@ import (
 )
 
 type Task struct {
+	Run  func(app *App)
 	Name string
 	Cron string
-	Run  func(app *App)
 }
 
 func InitTask(tasks *[]Task, app *App) (err error) {

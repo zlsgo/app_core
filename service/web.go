@@ -27,8 +27,8 @@ type (
 	// RouterBeforeProcess 控制器前置处理
 	RouterBeforeProcess func(r *Web, app *App)
 	Template            struct {
-		DIR    string
 		Global ztype.Map
+		DIR    string
 	}
 )
 

@@ -10,15 +10,19 @@ import (
 	gconf "github.com/zlsgo/conf"
 )
 
-type base struct {
-	Zone        int8   `mapstructure:"Zone"` // 时区区域
-	Debug       bool   // 开启全局调试模式
-	LogDir      string // 日志目录
-	LogPosition bool   // 调试下打印日志显示输出位置
-	Port        string // 项目端口
-	Pprof       bool   // 开启 pprof
-	Statsviz    bool   // 开启 statsviz
-	PprofToken  string // pprof Token
+type BaseConf struct {
+	LogDir      string
+	Port        string
+	PprofToken  string
+	Zone        int8 `mapstructure:"Zone"`
+	Debug       bool
+	LogPosition bool
+	Pprof       bool
+	Statsviz    bool
+}
+
+func (BaseConf) ConfKey() string {
+	return "base"
 }
 
 const (
@@ -37,7 +41,7 @@ var (
 )
 
 func init() {
-	DefaultConf = append(DefaultConf, base{
+	DefaultConf = append(DefaultConf, BaseConf{
 		Debug: debug,
 		Zone:  8,
 		Port:  "3788",
@@ -48,7 +52,7 @@ func init() {
 type Conf struct {
 	cfg *gconf.Confhub
 
-	Base base
+	Base BaseConf
 }
 
 func (c *Conf) Get(key string) ztype.Type {
