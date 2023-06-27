@@ -80,7 +80,7 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 
 			for i := 0; i < t.NumField(); i++ {
 				value, field := v.Field(i), t.Field(i)
-				if value.IsZero() {
+				if value.IsZero() || !value.CanSet() {
 					continue
 				}
 

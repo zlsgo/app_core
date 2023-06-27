@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/zlsgo/app_core/utils"
-
 	"github.com/sohaha/zlsgo/zerror"
 	"github.com/sohaha/zlsgo/zstring"
 
@@ -35,7 +33,7 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 		di.Map(p)
 	}
 
-	return utils.InvokeErr(di.Invoke(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
+	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
 		start := make([]func() error, 0, len(ps))
 		for i := range ps {
 			p := ps[i]
@@ -86,5 +84,5 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 			}
 		}
 		return nil
-	}))
+	})
 }
