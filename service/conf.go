@@ -3,7 +3,7 @@ package service
 import (
 	"reflect"
 
-	"github.com/zlsgo/app_core/utils"
+	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/spf13/viper"
@@ -112,8 +112,8 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 			cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
 		}
 
-		utils.Fatal(cfg.Read())
-		utils.Fatal(cfg.Unmarshal(&c))
+		common.Fatal(cfg.Read())
+		common.Fatal(cfg.Unmarshal(&c))
 
 		return c
 	}

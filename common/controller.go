@@ -1,4 +1,4 @@
-package utils
+package common
 
 import (
 	"github.com/sohaha/zlsgo/znet"
@@ -17,4 +17,12 @@ func VarPages(c *znet.Context) (page, pagesize int, err error) {
 		pagesize = 10
 	}
 	return
+}
+
+func VarUID(c *znet.Context) string {
+	id, ok := c.Value("uid", "")
+	if !ok {
+		return ""
+	}
+	return ztype.ToString(id)
 }

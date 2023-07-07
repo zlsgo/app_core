@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/zlsgo/app_core/utils"
+	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/znet"
@@ -86,10 +86,10 @@ func RunWeb(r *Web, app *App, controllers *[]Controller) {
 		after(r, app)
 	})
 	if err != nil && !strings.Contains(err.Error(), "value not found for type service.RouterBeforeProcess") {
-		utils.Fatal(err)
+		common.Fatal(err)
 	}
 
-	utils.Fatal(initRouter(app, r, *controllers))
+	common.Fatal(initRouter(app, r, *controllers))
 	r.StartUp()
 }
 
