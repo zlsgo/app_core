@@ -5,6 +5,7 @@ import (
 
 	"github.com/zlsgo/app_core/common"
 
+	"github.com/sohaha/zlsgo/zstring"
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/spf13/viper"
 	gconf "github.com/zlsgo/conf"
@@ -25,7 +26,7 @@ func (BaseConf) ConfKey() string {
 	return "base"
 }
 
-const (
+var (
 	// fileName 配置文件名
 	fileName = "conf"
 	// LogPrefix 日志前缀
@@ -39,14 +40,6 @@ const (
 var (
 	DefaultConf []interface{}
 )
-
-func init() {
-	DefaultConf = append(DefaultConf, BaseConf{
-		Debug: debug,
-		Zone:  8,
-		Port:  "3788",
-	})
-}
 
 // Conf 配置项
 type Conf struct {
@@ -80,7 +73,7 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 
 			for i := 0; i < t.NumField(); i++ {
 				value, field := v.Field(i), t.Field(i)
-				if value.IsZero() || !value.CanSet() {
+				if value.IsZero() || !zstring.IsUcfirst(field.Name) {
 					continue
 				}
 
@@ -88,9 +81,9 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 			}
 			return m
 		}
+
 		for _, c := range DefaultConf {
 			t := reflect.TypeOf(c)
-
 			v := reflect.ValueOf(c)
 			isPrt := t.Kind() == reflect.Ptr
 			if isPrt {
@@ -108,7 +101,6 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 				}
 				continue
 			}
-
 			cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
 		}
 
