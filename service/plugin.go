@@ -24,12 +24,11 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 	for _, p := range ps {
 		pdi := reflect.Indirect(reflect.ValueOf(p)).FieldByName("DI")
 		if pdi.IsValid() {
-			switch pdi.Type().String() {
-			case "zdi.Invoker", "zdi.Injector":
-				pdi.Set(reflect.ValueOf(di))
-			}
+			// switch pdi.Type().String() {
+			// case "zdi.Invoker", "zdi.Injector":
+			pdi.Set(reflect.ValueOf(di))
+			// }
 		}
-
 		di.Map(p)
 	}
 
@@ -43,12 +42,13 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 				name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
 			}
 
-			conf := reflect.Indirect(val).FieldByName("Conf")
+			ival := reflect.Indirect(val)
+			conf := ival.FieldByName("Conf")
 			if conf.IsValid() && conf.Type().String() == "*service.Conf" {
 				conf.Set(reflect.ValueOf(app.Conf))
 			}
 
-			log := reflect.Indirect(val).FieldByName("Log")
+			log := ival.FieldByName("Log")
 			if log.IsValid() && log.Type().String() == "*zlog.Logger" {
 				log.Set(reflect.ValueOf(app.Log))
 			}

@@ -24,9 +24,9 @@ type UploadOption struct {
 type UploadResult struct {
 	Path     string `json:"path"`
 	Name     string `json:"name"`
-	Size     int64  `json:"size"`
 	MimeType string `json:"mime_type"`
 	Storage  string `json:"storage"`
+	Size     int64  `json:"size"`
 }
 
 func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([]UploadResult, error) {

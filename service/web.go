@@ -103,7 +103,7 @@ func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 				controller = strings.Replace(controller, ".", "/", -1)
 				api := -1
 				for i := 0; i < typeOf.NumField(); i++ {
-					if typeOf.Field(i).Type.String() == "service.App" {
+					if typeOf.Field(i).Type.Name() == "App" {
 						api = i
 						break
 					}

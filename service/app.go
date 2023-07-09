@@ -1,6 +1,8 @@
 package service
 
 import (
+	"reflect"
+
 	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zfile"
 	"github.com/sohaha/zlsgo/zlog"
@@ -14,7 +16,10 @@ type App struct {
 	Log  *zlog.Logger
 }
 
-var Global *App
+var (
+	_      = reflect.TypeOf(&App{})
+	Global *App
+)
 
 func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
 	b := BaseConf{
