@@ -12,28 +12,44 @@ import (
 )
 
 type BaseConf struct {
-	LogDir      string
-	Port        string
-	PprofToken  string
-	Zone        int8 `mapstructure:"Zone"`
-	Debug       bool
-	LogPosition bool
-	Pprof       bool
-	Statsviz    bool
+	// LogDir specifies the directory for log files.
+	LogDir string `mapstructure:"log_dir"`
+
+	// Port specifies the port number for the server.
+	Port string `mapstructure:"port"`
+
+	// PprofToken is a token for accessing pprof endpoints.
+	PprofToken string `mapstructure:"pprof_token"`
+
+	// Zone specifies the zone for the configuration.
+	Zone int8 `mapstructure:"zone"`
+
+	// Debug specifies if debug mode is enabled.
+	Debug bool `mapstructure:"debug"`
+
+	// LogPosition specifies if log position should be included in logs.
+	LogPosition bool `mapstructure:"log_position"`
+
+	// Pprof specifies if pprof endpoints are enabled.
+	Pprof bool `mapstructure:"pprof"`
 }
 
+// ConfKey returns the configuration key for the BaseConf struct
 func (BaseConf) ConfKey() string {
 	return "base"
 }
 
 var (
-	// fileName 配置文件名
+	// fileName is the name of the configuration file.
 	fileName = "conf"
-	// LogPrefix 日志前缀
+
+	// LogPrefix is the prefix for log messages.
 	LogPrefix = ""
-	// AppName 项目名称
+
+	// AppName is the name of the application.
 	AppName = "ZlsAPP"
-	// debug 设置生成配置时，程序默认运行模式
+
+	// debug determines whether debug mode is enabled.
 	debug = true
 )
 
@@ -41,21 +57,45 @@ var (
 	DefaultConf []interface{}
 )
 
-// Conf 配置项
+// Conf represents the configuration struct.
 type Conf struct {
-	cfg *gconf.Confhub
+	cfg *gconf.Confhub // cfg is used to manage the configuration settings.
 
-	Base BaseConf
+	Base BaseConf // Base represents the base configuration settings.
 }
 
+// Get retrieves the value associated with the given key from the Conf object.
+//
+// Parameters:
+// - key: the key used to identify the value to retrieve.
+//
+// Returns:
+// - ztype.Type: the value associated with the given key.
 func (c *Conf) Get(key string) ztype.Type {
 	return ztype.New(c.Core().Get(key))
 }
 
+// Unmarshal unmarshals the value associated with the given key in the Conf struct.
+//
+// It takes a string key and a pointer to an interface{} as its parameters.
+// The function returns an error.
 func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 	return c.Core().UnmarshalKey(key, &rawVal)
 }
 
+// NewConf creates a new Conf object with the given options.
+//
+// opt: The optional configuration options.
+//
+//	These options are functions that modify the Conf object.
+//	They can be used to customize the behavior of the Conf object.
+//	The functions should accept a pointer to a gconf.Option object.
+//	Example:
+//	func(o *gconf.Option) {
+//	    o.EnvPrefix = AppName
+//	    o.AutoCreate = true
+//	    o.PrimaryAliss = "dev"
+//	}
 func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 	cfg := gconf.New(fileName, func(o *gconf.Option) {
 		o.EnvPrefix = AppName
@@ -119,6 +159,10 @@ func (c *Conf) Write() error {
 	return c.cfg.Write()
 }
 
+// Set updates the value of a configuration key.
+//
+// key: the key of the configuration property to be updated.
+// value: the new value to be set for the configuration property.
 func (c *Conf) Set(key string, value interface{}) {
 	c.cfg.Set(key, value)
 }

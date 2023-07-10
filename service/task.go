@@ -12,6 +12,7 @@ type Task struct {
 	Cron string
 }
 
+// InitTask initializes the tasks using the provided *App.
 func InitTask(tasks *[]Task, app *App) (err error) {
 	t := cron.New()
 

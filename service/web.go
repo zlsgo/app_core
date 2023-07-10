@@ -16,22 +16,28 @@ import (
 )
 
 type (
+	// Web represents a web structure.
 	Web struct {
 		*znet.Engine
 		hijacked []func(c *znet.Context) bool
 	}
-	// Controller 控制器函数
+
+	// Controller is an interface for controller functions.
 	Controller interface {
 		Init(r *znet.Engine) error
 	}
-	// RouterBeforeProcess 控制器前置处理
+
+	// RouterBeforeProcess is a type for controller pre-processing.
 	RouterBeforeProcess func(r *Web, app *App)
-	Template            struct {
-		Global ztype.Map
-		DIR    string
+
+	// Template represents a template structure.
+	Template struct {
+		Global ztype.Map // Global is a map for global variables in the template.
+		DIR    string    // DIR is the directory path for the template.
 	}
 )
 
+// AddHijack adds a hijack function to the Web struct
 func (w *Web) AddHijack(fn func(c *znet.Context) bool) {
 	if fn == nil {
 		return
@@ -39,11 +45,12 @@ func (w *Web) AddHijack(fn func(c *znet.Context) bool) {
 	w.hijacked = append(w.hijacked, fn)
 }
 
+// GetHijack returns the hijacked functions of the Web struct
 func (w *Web) GetHijack() []func(c *znet.Context) bool {
 	return w.hijacked
 }
 
-// NewWeb 初始化 WEB
+// NewWeb returns a function that creates a new Web instance along with a znet.Engine instance
 func NewWeb() func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
 	return func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
 		r := znet.New()
@@ -81,6 +88,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
 	}
 }
 
+// RunWeb runs the web application
 func RunWeb(r *Web, app *App, controllers *[]Controller) {
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
 		after(r, app)
@@ -93,6 +101,7 @@ func RunWeb(r *Web, app *App, controllers *[]Controller) {
 	r.StartUp()
 }
 
+// initRouter initializes the router for the application
 func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 	_, _ = app.DI.Invoke(func(r *Web) {
 		for i := range controllers {
@@ -108,6 +117,7 @@ func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 						break
 					}
 				}
+
 				if api == -1 {
 					return fmt.Errorf("%s not a legitimate controller", controller)
 				}

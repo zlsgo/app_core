@@ -20,6 +20,7 @@ type Plugin interface {
 	Done() error
 }
 
+// InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
 func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 	for _, p := range ps {
 		pdi := reflect.Indirect(reflect.ValueOf(p)).FieldByName("DI")

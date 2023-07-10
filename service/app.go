@@ -9,11 +9,11 @@ import (
 	"github.com/sohaha/zlsgo/zstring"
 )
 
-// App 控制器关联对象
+// App represents an application.
 type App struct {
-	DI   zdi.Invoker
-	Conf *Conf
-	Log  *zlog.Logger
+	DI   zdi.Invoker  // Dependency injection invoker.
+	Conf *Conf        // Application configuration.
+	Log  *zlog.Logger // Logger instance.
 }
 
 var (
@@ -21,6 +21,7 @@ var (
 	Global *App
 )
 
+// NewApp creates a new App with the provided options.
 func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
 	b := BaseConf{
 		Debug: debug,
@@ -42,6 +43,7 @@ func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
 	}
 }
 
+// initLog initializes the logger with the given configuration.
 func initLog(c *Conf) *zlog.Logger {
 	log := zlog.Log
 	log.SetPrefix(LogPrefix)
@@ -65,6 +67,7 @@ func initLog(c *Conf) *zlog.Logger {
 	return log
 }
 
+// PrintLog prints a log message with the given tip and additional values
 func PrintLog(tip string, v ...interface{}) {
 	d := []interface{}{
 		zlog.ColorTextWrap(zlog.ColorLightMagenta, zstring.Pad(tip, 6, " ", zstring.PadLeft)),
