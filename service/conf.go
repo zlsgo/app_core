@@ -32,6 +32,9 @@ type BaseConf struct {
 
 	// Pprof specifies if pprof endpoints are enabled.
 	Pprof bool `mapstructure:"pprof"`
+
+	// DisableDebug specifies if debug mode is disabled.
+	DisableDebug bool `mapstructure:"-"`
 }
 
 // ConfKey returns the configuration key for the BaseConf struct
@@ -108,6 +111,7 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 
 	return func() *Conf {
 		c := &Conf{cfg: cfg}
+		disableDebug := false
 		toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
 			m := make(map[string]interface{})
 
@@ -141,12 +145,19 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 				}
 				continue
 			}
-			cfg.SetDefault(getConfName(v), toMap(isPrt, t, v))
+			m := toMap(isPrt, t, v)
+			if getConfName(v) == "base" {
+				disableDebug = ztype.ToBool(m["DisableDebug"])
+			}
+			cfg.SetDefault(getConfName(v), m)
 		}
 
 		common.Fatal(cfg.Read())
 		common.Fatal(cfg.Unmarshal(&c))
 
+		if disableDebug {
+			c.Base.Debug = false
+		}
 		return c
 	}
 }
