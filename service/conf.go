@@ -58,6 +58,7 @@ var (
 
 var (
 	DefaultConf []interface{}
+	InlayConf   []interface{}
 )
 
 // Conf represents the configuration struct.
@@ -111,53 +112,11 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 
 	return func() *Conf {
 		c := &Conf{cfg: cfg}
-		disableDebug := false
-		toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
-			m := make(map[string]interface{})
-
-			for i := 0; i < t.NumField(); i++ {
-				value, field := v.Field(i), t.Field(i)
-				if value.IsZero() || !zstring.IsUcfirst(field.Name) {
-					continue
-				}
-
-				m[field.Name] = v.Field(i).Interface()
-			}
-			return m
-		}
-
-		for _, c := range DefaultConf {
-			t := reflect.TypeOf(c)
-			v := reflect.ValueOf(c)
-			isPrt := t.Kind() == reflect.Ptr
-			if isPrt {
-				t = t.Elem()
-				v = v.Elem()
-			}
-
-			if t.Kind() != reflect.Struct {
-				if t.Kind() == reflect.Slice {
-					maps := make([]map[string]interface{}, 0)
-					for i := 0; i < v.Len(); i++ {
-						maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
-					}
-					cfg.SetDefault(getConfName(v), maps)
-				}
-				continue
-			}
-			m := toMap(isPrt, t, v)
-			if getConfName(v) == "base" {
-				disableDebug = ztype.ToBool(m["DisableDebug"])
-			}
-			cfg.SetDefault(getConfName(v), m)
-		}
-
+		setConf(c, DefaultConf, false)
 		common.Fatal(cfg.Read())
+		setConf(c, InlayConf, true)
 		common.Fatal(cfg.Unmarshal(&c))
 
-		if disableDebug {
-			c.Base.Debug = false
-		}
 		return c
 	}
 }
@@ -197,4 +156,56 @@ func getConfName(t reflect.Value) string {
 	}
 
 	return key
+}
+
+func setConf(conf *Conf, value []interface{}, replace bool) {
+	disableDebug := false
+	set := conf.cfg.SetDefault
+	if replace {
+		set = conf.cfg.Set
+	}
+	toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
+		m := make(map[string]interface{})
+
+		for i := 0; i < t.NumField(); i++ {
+			value, field := v.Field(i), t.Field(i)
+			if value.IsZero() || !zstring.IsUcfirst(field.Name) {
+				continue
+			}
+
+			m[field.Name] = v.Field(i).Interface()
+		}
+		return m
+	}
+
+	for _, c := range value {
+		t := reflect.TypeOf(c)
+		v := reflect.ValueOf(c)
+		isPrt := t.Kind() == reflect.Ptr
+		if isPrt {
+			t = t.Elem()
+			v = v.Elem()
+		}
+
+		name := getConfName(v)
+		if t.Kind() != reflect.Struct {
+			if t.Kind() == reflect.Slice {
+				maps := make([]map[string]interface{}, 0)
+				for i := 0; i < v.Len(); i++ {
+					maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
+				}
+				set(name, maps)
+			}
+			continue
+		}
+		m := toMap(isPrt, t, v)
+		if name == "base" {
+			disableDebug = ztype.ToBool(m["DisableDebug"])
+		}
+		set(name, m)
+	}
+
+	if disableDebug {
+		conf.Base.Debug = false
+	}
 }
