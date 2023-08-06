@@ -20,6 +20,9 @@ var (
 func (p *Plugin) Name() string {
 	names := make([]string, 0)
 	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
+		if plugin.Name() == "" {
+			return true
+		}
 		names = append(names, plugin.Name())
 		return true
 	})

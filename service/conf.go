@@ -169,10 +169,9 @@ func setConf(conf *Conf, value []interface{}, replace bool) {
 
 		for i := 0; i < t.NumField(); i++ {
 			value, field := v.Field(i), t.Field(i)
-			if value.IsZero() || !zstring.IsUcfirst(field.Name) {
+			if value.IsZero() || !zstring.IsUcfirst(field.Name) || v.Field(i).Type().Kind() == reflect.Func {
 				continue
 			}
-
 			m[field.Name] = v.Field(i).Interface()
 		}
 		return m
