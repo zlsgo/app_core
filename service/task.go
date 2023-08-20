@@ -7,13 +7,13 @@ import (
 )
 
 type Task struct {
-	Run  func(app *App)
+	Run  func()
 	Name string
 	Cron string
 }
 
 // InitTask initializes the tasks using the provided *App.
-func InitTask(tasks *[]Task, app *App) (err error) {
+func InitTask(tasks *[]Task) (err error) {
 	t := cron.New()
 
 	for i := range *tasks {
@@ -22,7 +22,7 @@ func InitTask(tasks *[]Task, app *App) (err error) {
 			continue
 		}
 		_, err = t.Add(task.Cron, func() {
-			task.Run(app)
+			task.Run()
 		})
 
 		if err != nil {

@@ -20,6 +20,57 @@ type Plugin interface {
 	Done() error
 }
 
+type PluginService struct {
+	Controllers []Controller
+	Tasks       []Task
+}
+
+type Pluginer struct {
+	OnLoad  func() error
+	OnStart func() error
+	OnDone  func() error
+	Service *PluginService
+}
+
+func (p *Pluginer) Name() string {
+	return ""
+}
+
+func (p *Pluginer) Tasks() []Task {
+	if p.Service == nil {
+		return nil
+	}
+	return p.Service.Tasks
+}
+
+func (p *Pluginer) Controller() []Controller {
+	if p.Service == nil {
+		return nil
+	}
+	return p.Service.Controllers
+}
+
+func (p *Pluginer) Load() error {
+	if p.OnLoad == nil {
+		return nil
+	}
+	return p.OnLoad()
+}
+
+func (p *Pluginer) Start() error {
+	if p.OnStart == nil {
+		return nil
+	}
+	return p.OnStart()
+}
+
+func (p *Pluginer) Done() error {
+	if p.OnDone == nil {
+		return nil
+	}
+	return p.OnDone()
+}
+
 // InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
 func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 	for _, p := range ps {
@@ -51,7 +102,10 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 
 			log := ival.FieldByName("Log")
 			if log.IsValid() && log.Type().String() == "*zlog.Logger" {
-				log.Set(reflect.ValueOf(app.Log))
+				pLog := zlog.New("[Plugin " + name + "] ")
+				pLog.ResetFlags(app.Log.GetFlags())
+				pLog.SetLogLevel(app.Log.GetLogLevel())
+				log.Set(reflect.ValueOf(pLog))
 			}
 
 			err := zerror.TryCatch(func() error {

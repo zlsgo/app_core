@@ -5,7 +5,6 @@ import (
 
 	"github.com/zlsgo/app_core/common"
 
-	"github.com/sohaha/zlsgo/zstring"
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/spf13/viper"
 	gconf "github.com/zlsgo/conf"
@@ -13,28 +12,28 @@ import (
 
 type BaseConf struct {
 	// LogDir specifies the directory for log files.
-	LogDir string `mapstructure:"log_dir"`
+	LogDir string `json:"log_dir,omitempty"`
 
 	// Port specifies the port number for the server.
-	Port string `mapstructure:"port"`
+	Port string `json:"port,omitempty"`
 
 	// PprofToken is a token for accessing pprof endpoints.
-	PprofToken string `mapstructure:"pprof_token"`
+	PprofToken string `json:"pprof_token,omitempty"`
 
 	// Zone specifies the zone for the configuration.
-	Zone int8 `mapstructure:"zone"`
+	Zone int8 `json:"zone,omitempty"`
 
 	// Debug specifies if debug mode is enabled.
-	Debug bool `mapstructure:"debug"`
+	Debug bool `json:"debug,omitempty"`
 
 	// LogPosition specifies if log position should be included in logs.
-	LogPosition bool `mapstructure:"log_position"`
+	LogPosition bool `json:"log_position,omitempty"`
 
 	// Pprof specifies if pprof endpoints are enabled.
-	Pprof bool `mapstructure:"pprof"`
+	Pprof bool `json:"pprof,omitempty"`
 
 	// DisableDebug specifies if debug mode is disabled.
-	DisableDebug bool `mapstructure:"-"`
+	DisableDebug bool `json:"-"`
 }
 
 // ConfKey returns the configuration key for the BaseConf struct
@@ -58,7 +57,6 @@ var (
 
 var (
 	DefaultConf []interface{}
-	InlayConf   []interface{}
 )
 
 // Conf represents the configuration struct.
@@ -93,15 +91,15 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 //
 //	These options are functions that modify the Conf object.
 //	They can be used to customize the behavior of the Conf object.
-//	The functions should accept a pointer to a gconf.Option object.
+//	The functions should accept a pointer to a gconf.Options object.
 //	Example:
-//	func(o *gconf.Option) {
+//	func(o *gconf.Options) {
 //	    o.EnvPrefix = AppName
 //	    o.AutoCreate = true
 //	    o.PrimaryAliss = "dev"
 //	}
-func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
-	cfg := gconf.New(fileName, func(o *gconf.Option) {
+func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
+	cfg := gconf.New(fileName, func(o *gconf.Options) {
 		o.EnvPrefix = AppName
 		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
@@ -112,9 +110,9 @@ func NewConf(opt ...func(o *gconf.Option)) func() *Conf {
 
 	return func() *Conf {
 		c := &Conf{cfg: cfg}
-		setConf(c, DefaultConf, false)
+		delay := setConf(c, DefaultConf)
 		common.Fatal(cfg.Read())
-		setConf(c, InlayConf, true)
+		delay()
 		common.Fatal(cfg.Unmarshal(&c))
 
 		return c
@@ -158,53 +156,60 @@ func getConfName(t reflect.Value) string {
 	return key
 }
 
-func setConf(conf *Conf, value []interface{}, replace bool) {
-	disableDebug := false
-	set := conf.cfg.SetDefault
-	if replace {
-		set = conf.cfg.Set
-	}
-	toMap := func(isPrt bool, t reflect.Type, v reflect.Value) map[string]interface{} {
-		m := make(map[string]interface{})
-
-		for i := 0; i < t.NumField(); i++ {
-			value, field := v.Field(i), t.Field(i)
-			if value.IsZero() || !zstring.IsUcfirst(field.Name) || v.Field(i).Type().Kind() == reflect.Func {
-				continue
-			}
-			m[field.Name] = v.Field(i).Interface()
+func setConf(conf *Conf, value []interface{}) func() {
+	confs, disableDebug := ztype.Map{}, false
+	setConf := func(disableWrite bool) func(key string, value interface{}) {
+		if !disableWrite {
+			return conf.cfg.SetDefault
 		}
-		return m
+		return func(key string, value interface{}) {
+			confs[key] = value
+		}
 	}
 
 	for _, c := range value {
-		t := reflect.TypeOf(c)
 		v := reflect.ValueOf(c)
-		isPrt := t.Kind() == reflect.Ptr
-		if isPrt {
-			t = t.Elem()
-			v = v.Elem()
+		disableWrite := false
+		d := v.MethodByName("DisableWrite")
+		if d.IsValid() {
+			if f, ok := d.Interface().(func() bool); ok {
+				disableWrite = f()
+			}
 		}
 
 		name := getConfName(v)
-		if t.Kind() != reflect.Struct {
-			if t.Kind() == reflect.Slice {
-				maps := make([]map[string]interface{}, 0)
-				for i := 0; i < v.Len(); i++ {
-					maps = append(maps, toMap(isPrt, t.Elem(), v.Index(i)))
-				}
-				set(name, maps)
+		set := setConf(disableWrite)
+		t := v.Type()
+		switch t.Kind() {
+		case reflect.Struct:
+			m := ztype.ToMap(c)
+			if name == "base" {
+				disableDebug = m.Get("DisableDebug").Bool()
 			}
-			continue
+			set(name, m)
+		case reflect.Slice:
+			switch t.Elem().Kind() {
+			case reflect.Struct:
+				m := make([]map[string]interface{}, v.Len())
+				for i := 0; i < v.Len(); i++ {
+					m[i] = ztype.ToMap(v.Index(i).Interface())
+				}
+				set(name, m)
+			default:
+				set(name, v)
+			}
+		default:
+			set(name, c)
 		}
-		m := toMap(isPrt, t, v)
-		if name == "base" {
-			disableDebug = ztype.ToBool(m["DisableDebug"])
-		}
-		set(name, m)
 	}
 
 	if disableDebug {
 		conf.Base.Debug = false
+	}
+
+	return func() {
+		for k, v := range confs {
+			conf.cfg.SetDefault(k, v)
+		}
 	}
 }

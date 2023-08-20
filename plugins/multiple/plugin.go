@@ -51,7 +51,7 @@ func (p *Plugin) Load() (err error) {
 	})
 
 	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
-		if e := zerror.TryCatch(plugin.Load); err != nil {
+		if e := zerror.TryCatch(plugin.Load); e != nil {
 			if e != nil {
 				err = zerror.With(e, plugin.Name()+" load error")
 				return false
