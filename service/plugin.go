@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sohaha/zlsgo/zerror"
+	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/sohaha/zlsgo/zstring"
 
 	"github.com/sohaha/zlsgo/zdi"
@@ -72,53 +73,32 @@ func (p *Pluginer) Done() error {
 }
 
 // InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
-func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
+func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
+
 	for _, p := range ps {
-		pdi := reflect.Indirect(reflect.ValueOf(p)).FieldByName("DI")
-		if pdi.IsValid() {
-			// switch pdi.Type().String() {
-			// case "zdi.Invoker", "zdi.Injector":
-			pdi.Set(reflect.ValueOf(di))
-			// }
-		}
+		value := zreflect.ValueOf(p)
+		assignApp(value, app)
+		_ = assignDI(value, di)
+		_ = assignConf(value, app.Conf)
+		name := getPluginName(p, value)
+		_ = assignLog(value, app, "[Plugin "+name+"] ")
 		di.Map(p)
 	}
 
-	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
+	return di.InvokeWithErrorOnly(func(tasks *[]Task, controller *[]Controller, r *Web) error {
 		start := make([]func() error, 0, len(ps))
 		for i := range ps {
 			p := ps[i]
-			val := reflect.ValueOf(p)
-			name := p.Name()
-			if name == "" {
-				name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
-			}
+			name := getPluginName(p, zreflect.ValueOf(p))
 
-			ival := reflect.Indirect(val)
-			conf := ival.FieldByName("Conf")
-			if conf.IsValid() && conf.Type().String() == "*service.Conf" {
-				conf.Set(reflect.ValueOf(app.Conf))
-			}
-
-			log := ival.FieldByName("Log")
-			if log.IsValid() && log.Type().String() == "*zlog.Logger" {
-				pLog := zlog.New("[Plugin " + name + "] ")
-				pLog.ResetFlags(app.Log.GetFlags())
-				pLog.SetLogLevel(app.Log.GetLogLevel())
-				log.Set(reflect.ValueOf(pLog))
-			}
-
-			err := zerror.TryCatch(func() error {
-				return p.Load()
-			})
+			err := p.Load()
 			if err != nil {
 				return zerror.With(err, name+" failed to Load")
 			}
 
 			PrintLog("Plugin", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-			err = zerror.TryCatch(func() error {
-				return p.Start()
-			})
+
+			err = p.Start()
 			if err != nil {
 				return zerror.With(err, name+" failed to Start")
 			}
@@ -140,4 +120,12 @@ func InitPlugin(ps []Plugin, di zdi.Injector) (err error) {
 		}
 		return nil
 	})
+}
+
+func getPluginName(p Plugin, val reflect.Value) string {
+	name := p.Name()
+	if name == "" {
+		name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
+	}
+	return name
 }

@@ -6,34 +6,33 @@ import (
 	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/ztype"
-	"github.com/spf13/viper"
 	gconf "github.com/zlsgo/conf"
 )
 
 type BaseConf struct {
 	// LogDir specifies the directory for log files.
-	LogDir string `json:"log_dir,omitempty"`
+	LogDir string `z:"log_dir,omitempty"`
 
 	// Port specifies the port number for the server.
-	Port string `json:"port,omitempty"`
+	Port string `z:"port,omitempty"`
 
 	// PprofToken is a token for accessing pprof endpoints.
-	PprofToken string `json:"pprof_token,omitempty"`
+	PprofToken string `z:"pprof_token,omitempty"`
 
 	// Zone specifies the zone for the configuration.
-	Zone int8 `json:"zone,omitempty"`
+	Zone int8 `z:"zone,omitempty"`
 
 	// Debug specifies if debug mode is enabled.
-	Debug bool `json:"debug,omitempty"`
+	Debug bool `z:"debug,omitempty"`
 
 	// LogPosition specifies if log position should be included in logs.
-	LogPosition bool `json:"log_position,omitempty"`
+	LogPosition bool `z:"log_position,omitempty"`
 
 	// Pprof specifies if pprof endpoints are enabled.
-	Pprof bool `json:"pprof,omitempty"`
+	Pprof bool `z:"pprof,omitempty"`
 
 	// DisableDebug specifies if debug mode is disabled.
-	DisableDebug bool `json:"-"`
+	DisableDebug bool `z:"-"`
 }
 
 // ConfKey returns the configuration key for the BaseConf struct
@@ -74,7 +73,7 @@ type Conf struct {
 // Returns:
 // - ztype.Type: the value associated with the given key.
 func (c *Conf) Get(key string) ztype.Type {
-	return ztype.New(c.Core().Get(key))
+	return c.cfg.Get(key)
 }
 
 // Unmarshal unmarshals the value associated with the given key in the Conf struct.
@@ -82,7 +81,7 @@ func (c *Conf) Get(key string) ztype.Type {
 // It takes a string key and a pointer to an interface{} as its parameters.
 // The function returns an error.
 func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
-	return c.Core().UnmarshalKey(key, &rawVal)
+	return c.cfg.UnmarshalKey(key, &rawVal)
 }
 
 // NewConf creates a new Conf object with the given options.
@@ -117,10 +116,6 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 
 		return c
 	}
-}
-
-func (c *Conf) Core() *viper.Viper {
-	return c.cfg.Core
 }
 
 func (c *Conf) Write() error {

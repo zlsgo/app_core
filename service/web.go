@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/zlog"
@@ -12,7 +13,6 @@ import (
 	"github.com/sohaha/zlsgo/zpprof"
 	"github.com/sohaha/zlsgo/zstring"
 	"github.com/sohaha/zlsgo/ztype"
-	"github.com/sohaha/zlsgo/zutil"
 )
 
 type (
@@ -51,8 +51,8 @@ func (w *Web) GetHijack() []func(c *znet.Context) bool {
 }
 
 // NewWeb returns a function that creates a new Web instance along with a znet.Engine instance
-func NewWeb() func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
-	return func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
+func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Plugin) (*Web, *znet.Engine) {
+	return func(app *App, middlewares []znet.Handler, ps []Plugin) (*Web, *znet.Engine) {
 		r := znet.New()
 		r.Log = app.Log
 		r.AllowQuerySemicolons = true
@@ -89,7 +89,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler) (*Web, *znet.Engine) {
 }
 
 // RunWeb runs the web application
-func RunWeb(r *Web, app *App, controllers *[]Controller) {
+func RunWeb(r *Web, app *App, controllers *[]Controller, p []Plugin) {
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
 		after(r, app)
 	})
@@ -103,62 +103,53 @@ func RunWeb(r *Web, app *App, controllers *[]Controller) {
 
 // initRouter initializes the router for the application
 func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
-	_, _ = app.DI.Invoke(func(r *Web) {
+	err = app.DI.InvokeWithErrorOnly(func(r *Web) error {
 		for i := range controllers {
 			c := controllers[i]
-			err = zutil.TryCatch(func() (err error) {
-				typeOf := reflect.TypeOf(c).Elem()
-				controller := strings.TrimPrefix(typeOf.String(), "controller.")
-				controller = strings.Replace(controller, ".", "/", -1)
-				api := -1
-				for i := 0; i < typeOf.NumField(); i++ {
-					if typeOf.Field(i).Type.Name() == "App" {
-						api = i
-						break
-					}
-				}
+			valueOf := zreflect.ValueOf(c)
+			typeOf := zreflect.TypeOf(c).Elem()
+			value := reflect.Indirect(valueOf)
+			controller := strings.TrimPrefix(typeOf.String(), "controller.")
+			controller = strings.Replace(controller, ".", "/", -1)
 
-				if api == -1 {
-					return fmt.Errorf("%s not a legitimate controller", controller)
-				}
-
-				reflect.ValueOf(c).Elem().Field(api).Set(reflect.ValueOf(*app))
-
-				cDI := reflect.Indirect(reflect.ValueOf(c)).FieldByName("DI")
-				if cDI.IsValid() {
-					switch cDI.Type().String() {
-					case "zdi.Invoker", "zdi.Injector":
-						cDI.Set(reflect.ValueOf(app.DI))
-					}
-				}
-
-				name := ""
-				cName := reflect.Indirect(reflect.ValueOf(c)).FieldByName("Path")
-
-				if cName.IsValid() && cName.String() != "" {
-					name = zstring.CamelCaseToSnakeCase(cName.String(), "/")
-				} else {
-					name = zstring.CamelCaseToSnakeCase(controller, "/")
-				}
-
-				lname := strings.Split(name, "/")
-				if lname[len(lname)-1] == "index" {
-					name = strings.Join(lname[:len(lname)-1], "/")
-					name = strings.TrimSuffix(name, "/")
-				}
-				if name == "" {
-					err = r.BindStruct(name, c)
-				} else {
-					err = r.Group("/").BindStruct(name, c)
-				}
-				return err
-			})
-
+			err = dynamicAssign(valueOf, app)
 			if err != nil {
-				err = fmt.Errorf("初始化路由失败: %w", err)
-				return
+				return err
+			}
+
+			name := getWebRouterName(value, controller)
+			if name == "" {
+				err = r.BindStruct(name, c)
+			} else {
+				err = r.Group("/").BindStruct(name, c)
+			}
+			if err != nil {
+				return err
 			}
 		}
+		return nil
 	})
+
+	if err != nil {
+		err = fmt.Errorf("初始化路由失败: %w", err)
+
+	}
 	return
+}
+
+func getWebRouterName(value reflect.Value, controller string) string {
+	name := ""
+	cName := value.FieldByName("Path")
+	if cName.IsValid() && cName.String() != "" {
+		name = zstring.CamelCaseToSnakeCase(cName.String(), "/")
+	} else {
+		name = zstring.CamelCaseToSnakeCase(controller, "/")
+	}
+
+	lname := strings.Split(name, "/")
+	if lname[len(lname)-1] == "index" {
+		name = strings.Join(lname[:len(lname)-1], "/")
+		name = strings.TrimSuffix(name, "/")
+	}
+	return name
 }
