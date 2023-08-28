@@ -30,6 +30,7 @@ type Pluginer struct {
 	OnLoad  func() error
 	OnStart func() error
 	OnDone  func() error
+	OnStop  func() error
 	Service *PluginService
 }
 
@@ -70,6 +71,13 @@ func (p *Pluginer) Done() error {
 		return nil
 	}
 	return p.OnDone()
+}
+
+func (p *Pluginer) Stop() error {
+	if p.OnStop == nil {
+		return nil
+	}
+	return p.OnStop()
 }
 
 // InitPlugin initializes the plugin with the given list of plugins and a dependency injector.

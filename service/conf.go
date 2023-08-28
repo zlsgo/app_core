@@ -152,7 +152,7 @@ func getConfName(t reflect.Value) string {
 }
 
 func setConf(conf *Conf, value []interface{}) func() {
-	confs, disableDebug := ztype.Map{}, false
+	confs, disableDebug, autoUnmarshal := ztype.Map{}, false, []func(){}
 	setConf := func(disableWrite bool) func(key string, value interface{}) {
 		if !disableWrite {
 			return conf.cfg.SetDefault
@@ -171,8 +171,9 @@ func setConf(conf *Conf, value []interface{}) func() {
 				disableWrite = f()
 			}
 		}
-
+		isPtr := v.Kind() == reflect.Ptr
 		name := getConfName(v)
+		v = reflect.Indirect(v)
 		set := setConf(disableWrite)
 		t := v.Type()
 		switch t.Kind() {
@@ -196,6 +197,11 @@ func setConf(conf *Conf, value []interface{}) func() {
 		default:
 			set(name, c)
 		}
+		if isPtr {
+			autoUnmarshal = append(autoUnmarshal, func() {
+				_ = conf.cfg.UnmarshalKey(name, &c)
+			})
+		}
 	}
 
 	if disableDebug {
@@ -205,6 +211,9 @@ func setConf(conf *Conf, value []interface{}) func() {
 	return func() {
 		for k, v := range confs {
 			conf.cfg.SetDefault(k, v)
+		}
+		for _, f := range autoUnmarshal {
+			f()
 		}
 	}
 }
