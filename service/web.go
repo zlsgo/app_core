@@ -89,7 +89,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Plugin) (*Web,
 }
 
 // RunWeb runs the web application
-func RunWeb(r *Web, app *App, controllers *[]Controller, p []Plugin) {
+func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Plugin) {
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
 		after(r, app)
 	})
@@ -98,7 +98,17 @@ func RunWeb(r *Web, app *App, controllers *[]Controller, p []Plugin) {
 	}
 
 	common.Fatal(initRouter(app, r, *controllers))
-	r.StartUp()
+
+	// r.StartUp()
+	znet.Run()
+
+	for _, p := range ps {
+		of := zreflect.ValueOf(p)
+		stop := of.MethodByName("Stop")
+		if stop.IsValid() {
+			_, _ = app.DI.Invoke(stop.Interface())
+		}
+	}
 }
 
 // initRouter initializes the router for the application
