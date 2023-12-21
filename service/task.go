@@ -15,7 +15,10 @@ type Task struct {
 // InitTask initializes the tasks using the provided *App.
 func InitTask(tasks *[]Task) (err error) {
 	t := cron.New()
-
+	if len(*tasks) == 0 {
+		return nil
+	}
+	PrintLog("Cron", "Register ")
 	for i := range *tasks {
 		task := &(*tasks)[i]
 		if task.Cron == "" || task.Run == nil {
@@ -30,7 +33,7 @@ func InitTask(tasks *[]Task) (err error) {
 		}
 
 		next, _ := cron.ParseNextTime(task.Cron)
-		PrintLog("Cron", "Register: "+zlog.Log.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"] -> ["+ztime.FormatTime(next)+"]"))
+		PrintLog("", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"] -> ["+ztime.FormatTime(next)+"]"))
 	}
 
 	t.Run()

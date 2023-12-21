@@ -93,7 +93,7 @@ func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
 		di.Map(p)
 	}
 
-	return di.InvokeWithErrorOnly(func(tasks *[]Task, controller *[]Controller, r *Web) error {
+	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
 		start := make([]func() error, 0, len(ps))
 		for i := range ps {
 			p := ps[i]
@@ -113,10 +113,11 @@ func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
 
 			start = append(start, func() error {
 				*tasks = append(*tasks, p.Tasks()...)
-				*controller = append(*controller, p.Controller()...)
 				if err := zerror.TryCatch(func() error { return p.Done() }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
+
+				initRouter(app, r, p.Controller())
 				return nil
 			})
 		}
