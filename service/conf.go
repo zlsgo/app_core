@@ -162,10 +162,11 @@ func setConf(conf *Conf, value []interface{}) func() {
 		}
 	}
 
-	for _, c := range value {
+	for i := range value {
+		c := value[i]
 		v := reflect.ValueOf(c)
-		disableWrite := false
 		d := v.MethodByName("DisableWrite")
+		disableWrite := false
 		if d.IsValid() {
 			if f, ok := d.Interface().(func() bool); ok {
 				disableWrite = f()
@@ -197,6 +198,7 @@ func setConf(conf *Conf, value []interface{}) func() {
 		default:
 			set(name, c)
 		}
+
 		if isPtr {
 			autoUnmarshal = append(autoUnmarshal, func() {
 				_ = conf.cfg.UnmarshalKey(name, &c)
