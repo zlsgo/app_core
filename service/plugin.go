@@ -16,9 +16,9 @@ type Plugin interface {
 	Name() string
 	Tasks() []Task
 	Controller() []Controller
-	Load() error
-	Start() error
-	Done() error
+	Load(zdi.Invoker) (any, error)
+	Start(zdi.Invoker) error
+	Done(zdi.Invoker) error
 }
 
 type PluginService struct {
@@ -27,10 +27,10 @@ type PluginService struct {
 }
 
 type Pluginer struct {
-	OnLoad  func() error
-	OnStart func() error
-	OnDone  func() error
-	OnStop  func() error
+	OnLoad  func(zdi.Invoker) (any, error)
+	OnStart func(zdi.Invoker) error
+	OnDone  func(zdi.Invoker) error
+	OnStop  func(zdi.Invoker) error
 	Service *PluginService
 }
 
@@ -52,37 +52,36 @@ func (p *Pluginer) Controller() []Controller {
 	return p.Service.Controllers
 }
 
-func (p *Pluginer) Load() error {
+func (p *Pluginer) Load(di zdi.Invoker) (any, error) {
 	if p.OnLoad == nil {
-		return nil
+		return nil, nil
 	}
-	return p.OnLoad()
+	return p.OnLoad(di)
 }
 
-func (p *Pluginer) Start() error {
+func (p *Pluginer) Start(di zdi.Invoker) error {
 	if p.OnStart == nil {
 		return nil
 	}
-	return p.OnStart()
+	return p.OnStart(di)
 }
 
-func (p *Pluginer) Done() error {
+func (p *Pluginer) Done(di zdi.Invoker) error {
 	if p.OnDone == nil {
 		return nil
 	}
-	return p.OnDone()
+	return p.OnDone(di)
 }
 
-func (p *Pluginer) Stop() error {
+func (p *Pluginer) Stop(di zdi.Invoker) error {
 	if p.OnStop == nil {
 		return nil
 	}
-	return p.OnStop()
+	return p.OnStop(di)
 }
 
 // InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
 func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
-
 	for _, p := range ps {
 		value := zreflect.ValueOf(p)
 		assignApp(value, app)
@@ -94,36 +93,60 @@ func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
 	}
 
 	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
-		start := make([]func() error, 0, len(ps))
+		runs := make([]func() error, 0, len(ps))
+		starts := make([]func() error, 0, len(ps))
 		for i := range ps {
 			p := ps[i]
 			name := getPluginName(p, zreflect.ValueOf(p))
 
-			err := p.Load()
+			PrintLog("Plugin", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
+
+			load, err := p.Load(di)
 			if err != nil {
 				return zerror.With(err, name+" failed to Load")
 			}
-
-			PrintLog("Plugin", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-
-			err = p.Start()
-			if err != nil {
-				return zerror.With(err, name+" failed to Start")
+			loadVal := zreflect.ValueOf(load)
+			if loadVal.IsValid() {
+				if loadVal.Kind() == reflect.Func {
+					di.Provide(load)
+				} else {
+					di.Map(load)
+				}
 			}
 
-			start = append(start, func() error {
-				*tasks = append(*tasks, p.Tasks()...)
-				if err := zerror.TryCatch(func() error { return p.Done() }); err != nil {
+			starts = append(starts, func() error {
+				if err := zerror.TryCatch(func() error { return p.Start(di) }); err != nil {
+					return zerror.With(err, name+" failed to Start")
+				}
+				return nil
+			})
+
+			runs = append(runs, func() error {
+				tasks := p.Tasks()
+				if err = InitTask(&tasks); err != nil {
+					return zerror.With(err, "timed task launch failed")
+				}
+
+				if err = initRouter(app, r, p.Controller()); err != nil {
+					return zerror.With(err, "router binding failed")
+				}
+
+				if err := zerror.TryCatch(func() error { return p.Done(di) }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
 
-				initRouter(app, r, p.Controller())
 				return nil
 			})
 		}
 
-		for i := range start {
-			if err := start[i](); err != nil {
+		for i := range starts {
+			if err := starts[i](); err != nil {
+				return err
+			}
+		}
+
+		for i := range runs {
+			if err := runs[i](); err != nil {
 				return err
 			}
 		}
