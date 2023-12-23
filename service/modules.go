@@ -99,12 +99,12 @@ func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
 			p := ps[i]
 			name := getModuleName(p, zreflect.ValueOf(p))
 
-			PrintLog("Module", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-
+			PrintLog("Module Load", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 			load, err := p.Load(di)
 			if err != nil {
 				return zerror.With(err, name+" failed to Load")
 			}
+
 			loadVal := zreflect.ValueOf(load)
 			if loadVal.IsValid() {
 				if loadVal.Kind() == reflect.Func {
@@ -115,6 +115,7 @@ func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
 			}
 
 			starts = append(starts, func() error {
+				// PrintLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 				if err := zerror.TryCatch(func() error { return p.Start(di) }); err != nil {
 					return zerror.With(err, name+" failed to Start")
 				}
@@ -134,6 +135,7 @@ func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
 				if err := zerror.TryCatch(func() error { return p.Done(di) }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
+				PrintLog(zlog.Log.ColorTextWrap(zlog.ColorGreen, "Module Success"), zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 
 				return nil
 			})
