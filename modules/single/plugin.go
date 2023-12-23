@@ -3,6 +3,7 @@ package single
 import (
 	"reflect"
 
+	"github.com/sohaha/zlsgo/zdi"
 	"github.com/zlsgo/app_core/service"
 )
 
@@ -13,7 +14,7 @@ type Plugin struct {
 }
 
 var (
-	_ service.Plugin = &Plugin{}
+	_ service.Module = &Plugin{}
 	_                = reflect.TypeOf(&Plugin{})
 )
 
@@ -29,21 +30,21 @@ func (p *Plugin) Tasks() []service.Task {
 	return tasks
 }
 
-func (p *Plugin) Load() (err error) {
+func (p *Plugin) Load(zdi.Invoker) (any, error) {
 	if p.lifecycle.Load != nil {
 		return p.lifecycle.Load(p.DI)
 	}
-	return
+	return nil, nil
 }
 
-func (p *Plugin) Start() (err error) {
+func (p *Plugin) Start(zdi.Invoker) (err error) {
 	if p.lifecycle.Start != nil {
 		return p.lifecycle.Start(p.DI)
 	}
 	return
 }
 
-func (p *Plugin) Done() (err error) {
+func (p *Plugin) Done(zdi.Invoker) (err error) {
 	if p.lifecycle.Done != nil {
 		p.instance, err = p.lifecycle.Done(p.DI)
 		return

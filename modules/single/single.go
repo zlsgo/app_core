@@ -6,7 +6,7 @@ import (
 
 type Lifecycle struct {
 	Name  string
-	Load  func(zdi.Invoker) error
+	Load  func(zdi.Invoker) (any, error)
 	Start func(zdi.Invoker) error
 	Done  func(zdi.Invoker) (interface{}, error)
 }

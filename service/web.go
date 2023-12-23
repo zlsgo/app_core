@@ -51,8 +51,8 @@ func (w *Web) GetHijack() []func(c *znet.Context) bool {
 }
 
 // NewWeb returns a function that creates a new Web instance along with a znet.Engine instance
-func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Plugin) (*Web, *znet.Engine) {
-	return func(app *App, middlewares []znet.Handler, ps []Plugin) (*Web, *znet.Engine) {
+func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web, *znet.Engine) {
+	return func(app *App, middlewares []znet.Handler, ps []Module) (*Web, *znet.Engine) {
 		r := znet.New()
 		r.Log = app.Log
 		r.AllowQuerySemicolons = true
@@ -89,7 +89,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Plugin) (*Web,
 }
 
 // RunWeb runs the web application
-func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Plugin) {
+func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Module) {
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
 		after(r, app)
 	})

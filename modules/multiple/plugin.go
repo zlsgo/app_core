@@ -4,7 +4,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zerror"
+	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/zlsgo/app_core/service"
 )
 
@@ -13,13 +15,13 @@ type Plugin struct {
 }
 
 var (
-	_ service.Plugin = &Plugin{}
+	_ service.Module = &Plugin{}
 	_                = reflect.TypeOf(&Plugin{})
 )
 
 func (p *Plugin) Name() string {
 	names := make([]string, 0)
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
 		if plugin.Name() == "" {
 			return true
 		}
@@ -34,15 +36,15 @@ func (p *Plugin) Name() string {
 
 func (p *Plugin) Tasks() []service.Task {
 	tasks := make([]service.Task, 0)
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
 		tasks = append(tasks, plugin.Tasks()...)
 		return true
 	})
 	return tasks
 }
 
-func (p *Plugin) Load() (err error) {
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
+func (p *Plugin) Load(zdi.Invoker) (any, error) {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
 		pdi := reflect.Indirect(reflect.ValueOf(plugin)).FieldByName("DI")
 		if pdi.IsValid() {
 			pdi.Set(reflect.ValueOf(p.DI))
@@ -50,21 +52,32 @@ func (p *Plugin) Load() (err error) {
 		return true
 	})
 
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
-		if e := zerror.TryCatch(plugin.Load); e != nil {
-			if e != nil {
-				err = zerror.With(e, plugin.Name()+" load error")
-				return false
+	var err error
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
+		v, e := plugin.Load(p.DI)
+		if e != nil {
+			err = zerror.With(e, plugin.Name()+" load error")
+			return false
+		}
+		val := zreflect.ValueOf(v)
+
+		if val.IsValid() {
+			di := p.DI.(zdi.TypeMapper)
+			if val.Kind() == reflect.Func {
+				di.Provide(v)
+			} else {
+				di.Map(val)
 			}
+
 		}
 		return true
 	})
-	return
+	return nil, err
 }
 
-func (p *Plugin) Start() (err error) {
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
-		if e := zerror.TryCatch(plugin.Start); err != nil {
+func (p *Plugin) Start(zdi.Invoker) (err error) {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
+		if e := plugin.Start(p.DI); err != nil {
 			if e != nil {
 				err = zerror.With(e, plugin.Name()+" start error")
 				return false
@@ -75,9 +88,9 @@ func (p *Plugin) Start() (err error) {
 	return
 }
 
-func (p *Plugin) Done() (err error) {
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
-		if e := zerror.TryCatch(plugin.Done); err != nil {
+func (p *Plugin) Done(zdi.Invoker) (err error) {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
+		if e := plugin.Done(p.DI); err != nil {
 			if e != nil {
 				err = zerror.With(e, plugin.Name()+" done error")
 				return false
@@ -90,7 +103,7 @@ func (p *Plugin) Done() (err error) {
 
 func (p *Plugin) Controller() []service.Controller {
 	controllers := make([]service.Controller, 0)
-	plugins.ForEach(func(_ string, plugin service.Plugin) bool {
+	plugins.ForEach(func(_ string, plugin service.Module) bool {
 		controllers = append(controllers, plugin.Controller()...)
 		return true
 	})

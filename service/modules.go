@@ -12,7 +12,7 @@ import (
 	"github.com/sohaha/zlsgo/zlog"
 )
 
-type Plugin interface {
+type Module interface {
 	Name() string
 	Tasks() []Task
 	Controller() []Controller
@@ -21,59 +21,59 @@ type Plugin interface {
 	Done(zdi.Invoker) error
 }
 
-type PluginService struct {
+type ModuleService struct {
 	Controllers []Controller
 	Tasks       []Task
 }
 
-type Pluginer struct {
+type ModuleLifeCycle struct {
 	OnLoad  func(zdi.Invoker) (any, error)
 	OnStart func(zdi.Invoker) error
 	OnDone  func(zdi.Invoker) error
 	OnStop  func(zdi.Invoker) error
-	Service *PluginService
+	Service *ModuleService
 }
 
-func (p *Pluginer) Name() string {
+func (p *ModuleLifeCycle) Name() string {
 	return ""
 }
 
-func (p *Pluginer) Tasks() []Task {
+func (p *ModuleLifeCycle) Tasks() []Task {
 	if p.Service == nil {
 		return nil
 	}
 	return p.Service.Tasks
 }
 
-func (p *Pluginer) Controller() []Controller {
+func (p *ModuleLifeCycle) Controller() []Controller {
 	if p.Service == nil {
 		return nil
 	}
 	return p.Service.Controllers
 }
 
-func (p *Pluginer) Load(di zdi.Invoker) (any, error) {
+func (p *ModuleLifeCycle) Load(di zdi.Invoker) (any, error) {
 	if p.OnLoad == nil {
 		return nil, nil
 	}
 	return p.OnLoad(di)
 }
 
-func (p *Pluginer) Start(di zdi.Invoker) error {
+func (p *ModuleLifeCycle) Start(di zdi.Invoker) error {
 	if p.OnStart == nil {
 		return nil
 	}
 	return p.OnStart(di)
 }
 
-func (p *Pluginer) Done(di zdi.Invoker) error {
+func (p *ModuleLifeCycle) Done(di zdi.Invoker) error {
 	if p.OnDone == nil {
 		return nil
 	}
 	return p.OnDone(di)
 }
 
-func (p *Pluginer) Stop(di zdi.Invoker) error {
+func (p *ModuleLifeCycle) Stop(di zdi.Invoker) error {
 	if p.OnStop == nil {
 		return nil
 	}
@@ -81,14 +81,14 @@ func (p *Pluginer) Stop(di zdi.Invoker) error {
 }
 
 // InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
-func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
+func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
 	for _, p := range ps {
 		value := zreflect.ValueOf(p)
 		assignApp(value, app)
 		_ = assignDI(value, di)
 		_ = assignConf(value, app.Conf)
-		name := getPluginName(p, value)
-		_ = assignLog(value, app, "[Plugin "+name+"] ")
+		name := getModuleName(p, value)
+		_ = assignLog(value, app, "[Module "+name+"] ")
 		di.Map(p)
 	}
 
@@ -97,9 +97,9 @@ func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
 		starts := make([]func() error, 0, len(ps))
 		for i := range ps {
 			p := ps[i]
-			name := getPluginName(p, zreflect.ValueOf(p))
+			name := getModuleName(p, zreflect.ValueOf(p))
 
-			PrintLog("Plugin", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
+			PrintLog("Module", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 
 			load, err := p.Load(di)
 			if err != nil {
@@ -154,7 +154,7 @@ func InitPlugin(ps []Plugin, app *App, di zdi.Injector) (err error) {
 	})
 }
 
-func getPluginName(p Plugin, val reflect.Value) string {
+func getModuleName(p Module, val reflect.Value) string {
 	name := p.Name()
 	if name == "" {
 		name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
