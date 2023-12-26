@@ -6,26 +6,26 @@ import (
 	"github.com/zlsgo/app_core/service"
 )
 
-var plugins = zarray.NewHashMap[string, service.Module]()
+var modules = zarray.NewHashMap[string, service.Module]()
 
 func Get(name string) (service.Module, bool) {
-	return plugins.Get(name)
+	return modules.Get(name)
 }
 
-func New(ps map[string]service.Module) *Plugin {
-	if plugins.Len() > 0 {
-		zlog.Warn("plugins already exists, please check if there are duplicate names")
+func New(mods map[string]service.Module) *Module {
+	if modules.Len() > 0 {
+		zlog.Warn("modules already exists, please check if there are duplicate names")
 	}
-	for name, plugin := range ps {
-		plugins.Set(name, plugin)
+	for name, m := range mods {
+		modules.Set(name, m)
 	}
-	return &Plugin{}
+	return &Module{}
 }
 
-func (p *Plugin) Add(name string, plugin service.Module) {
-	plugins.Set(name, plugin)
+func (m *Module) Add(name string, plugin service.Module) {
+	modules.Set(name, plugin)
 }
 
-func (p *Plugin) Get(name string) (service.Module, bool) {
+func (m *Module) Get(name string) (service.Module, bool) {
 	return Get(name)
 }

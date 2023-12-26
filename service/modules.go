@@ -4,12 +4,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zerror"
+	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/sohaha/zlsgo/zstring"
-
-	"github.com/sohaha/zlsgo/zdi"
-	"github.com/sohaha/zlsgo/zlog"
 )
 
 type Module interface {
@@ -80,59 +79,50 @@ func (p *ModuleLifeCycle) Stop(di zdi.Invoker) error {
 	return p.OnStop(di)
 }
 
-// InitPlugin initializes the plugin with the given list of plugins and a dependency injector.
-func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
-	for _, p := range ps {
-		value := zreflect.ValueOf(p)
+// InitModule initializes the module with the given list of plugins and a dependency injector.
+func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
+	for _, mod := range modules {
+		value := zreflect.ValueOf(mod)
 		assignApp(value, app)
 		_ = assignDI(value, di)
 		_ = assignConf(value, app.Conf)
-		name := getModuleName(p, value)
+		name := getModuleName(mod, value)
 		_ = assignLog(value, app, "[Module "+name+"] ")
-		di.Map(p)
+		di.Map(mod)
 	}
 
 	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
-		runs := make([]func() error, 0, len(ps))
-		starts := make([]func() error, 0, len(ps))
-		for i := range ps {
-			p := ps[i]
-			name := getModuleName(p, zreflect.ValueOf(p))
+		runs := make([]func() error, 0, len(modules))
+		starts := make([]func() error, 0, len(modules))
+		for i := range modules {
+			mod := modules[i]
+			name := getModuleName(mod, zreflect.ValueOf(mod))
 
 			PrintLog("Module Load", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-			load, err := p.Load(di)
-			if err != nil {
-				return zerror.With(err, name+" failed to Load")
-			}
 
-			loadVal := zreflect.ValueOf(load)
-			if loadVal.IsValid() {
-				if loadVal.Kind() == reflect.Func {
-					di.Provide(load)
-				} else {
-					di.Map(load)
-				}
+			if err := loadModule(di, name, mod); err != nil {
+				return err
 			}
 
 			starts = append(starts, func() error {
 				// PrintLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-				if err := zerror.TryCatch(func() error { return p.Start(di) }); err != nil {
+				if err := zerror.TryCatch(func() error { return mod.Start(di) }); err != nil {
 					return zerror.With(err, name+" failed to Start")
 				}
 				return nil
 			})
 
 			runs = append(runs, func() error {
-				tasks := p.Tasks()
+				tasks := mod.Tasks()
 				if err = InitTask(&tasks); err != nil {
 					return zerror.With(err, "timed task launch failed")
 				}
 
-				if err = initRouter(app, r, p.Controller()); err != nil {
+				if err = initRouter(app, r, mod.Controller()); err != nil {
 					return zerror.With(err, "router binding failed")
 				}
 
-				if err := zerror.TryCatch(func() error { return p.Done(di) }); err != nil {
+				if err := zerror.TryCatch(func() error { return mod.Done(di) }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
 				PrintLog(zlog.Log.ColorTextWrap(zlog.ColorGreen, "Module Success"), zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
@@ -156,10 +146,28 @@ func InitPlugin(ps []Module, app *App, di zdi.Injector) (err error) {
 	})
 }
 
-func getModuleName(p Module, val reflect.Value) string {
-	name := p.Name()
+func getModuleName(m Module, val reflect.Value) string {
+	name := m.Name()
 	if name == "" {
 		name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
 	}
 	return name
+}
+
+func loadModule(di zdi.Injector, name string, mod Module) error {
+	load, err := mod.Load(di)
+	if err != nil {
+		return zerror.With(err, name+" failed to Load")
+	}
+
+	loadVal := zreflect.ValueOf(load)
+	if loadVal.IsValid() {
+		if loadVal.Kind() == reflect.Func {
+			di.Provide(load)
+		} else {
+			di.Map(load)
+		}
+	}
+
+	return nil
 }

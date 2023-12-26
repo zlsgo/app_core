@@ -11,12 +11,12 @@ type Lifecycle struct {
 	Done  func(zdi.Invoker) (interface{}, error)
 }
 
-func New(s Lifecycle) *Plugin {
-	return &Plugin{
+func New(s Lifecycle) *Module {
+	return &Module{
 		lifecycle: s,
 	}
 }
 
-func (p *Plugin) Instance() interface{} {
-	return p.instance
+func (m *Module) Instance() interface{} {
+	return m.instance
 }
