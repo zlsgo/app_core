@@ -98,7 +98,8 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 			mod := modules[i]
 			name := getModuleName(mod, zreflect.ValueOf(mod))
 
-			PrintLog("Module Load", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
+			logname := zlog.Log.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
+			PrintLog("Module Load", logname)
 
 			if err := loadModule(di, name, mod); err != nil {
 				return err
@@ -125,7 +126,8 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 				if err := zerror.TryCatch(func() error { return mod.Done(di) }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
-				PrintLog(zlog.Log.ColorTextWrap(zlog.ColorGreen, "Module Success"), zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
+
+				PrintLog("Module Success", logname)
 
 				return nil
 			})

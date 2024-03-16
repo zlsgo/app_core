@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -99,8 +100,12 @@ func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Module) {
 
 	common.Fatal(initRouter(app, r, *controllers))
 
-	// r.StartUp()
-	znet.Run()
+	var ctx context.Context
+	if err := app.DI.Resolve(&ctx); err == nil {
+		znet.RunContext(ctx)
+	} else {
+		znet.Run()
+	}
 
 	for _, p := range ps {
 		of := zreflect.ValueOf(p)
