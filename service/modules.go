@@ -2,13 +2,18 @@ package service
 
 import (
 	"reflect"
+	"sort"
 	"strings"
 
+	"github.com/sohaha/zlsgo/zarray"
 	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zerror"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/sohaha/zlsgo/zstring"
+	"github.com/sohaha/zlsgo/zutil"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 type Module interface {
@@ -92,12 +97,33 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 	}
 
 	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
-		runs := make([]func() error, 0, len(modules))
-		starts := make([]func() error, 0, len(modules))
+		moduleTotal := len(modules)
+		runs := make([]func() error, 0, moduleTotal)
+		starts := make([]func() error, 0, moduleTotal)
+		reloads := make([]func(), 0, moduleTotal)
+
+		type module struct {
+			vof   reflect.Value
+			mod   Module
+			index int
+		}
+		modulesMap := make(map[string]module, moduleTotal)
 		for i := range modules {
 			mod := modules[i]
-			name := getModuleName(mod, zreflect.ValueOf(mod))
+			vof := zreflect.ValueOf(mod)
+			name := getModuleName(mod, vof)
+			modulesMap[name] = module{
+				vof:   vof,
+				index: i,
+				mod:   mod,
+			}
+		}
 
+		moduleKeys := zarray.Keys(modulesMap)
+		sort.Strings(moduleKeys)
+
+		for _, name := range moduleKeys {
+			mod, vof := modulesMap[name].mod, modulesMap[name].vof
 			logname := zlog.Log.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
 			PrintLog("Module Load", logname)
 
@@ -129,6 +155,20 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 
 				PrintLog("Module Success", logname)
 
+				reload := vof.MethodByName("Reload")
+				if reload.IsValid() {
+					f, ok := reload.Interface().(func(zdi.Invoker) error)
+					if ok {
+						reloads = append(reloads, func() {
+							if err := f(app.DI); err != nil {
+								zlog.Error(zerror.With(err, name+" failed to Reload"))
+							}
+						})
+					} else {
+						zlog.Warn(name + " reload method is not valid, it should be: " + zlog.OpTextWrap(zlog.OpBold, "func(zdi.Invoker) error"))
+					}
+				}
+
 				return nil
 			})
 		}
@@ -144,6 +184,22 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 				return err
 			}
 		}
+
+		var b = zutil.NewBool(false)
+		app.Conf.cfg.ConfigChange(func(e fsnotify.Event) {
+			if !b.CAS(false, true) {
+				return
+			}
+
+			if e.Op == fsnotify.Write {
+				app.Conf.autoUnmarshal()
+				for _, fn := range reloads {
+					fn()
+				}
+			}
+			b.Store(false)
+		})
+
 		return nil
 	})
 }

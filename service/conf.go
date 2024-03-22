@@ -62,7 +62,8 @@ var (
 type Conf struct {
 	cfg *gconf.Confhub // cfg is used to manage the configuration settings.
 
-	Base BaseConf // Base represents the base configuration settings.
+	Base          BaseConf // Base represents the base configuration settings.
+	autoUnmarshal func()   `z:"-"`
 }
 
 // Get retrieves the value associated with the given key from the Conf object.
@@ -109,10 +110,16 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 
 	return func() *Conf {
 		c := &Conf{cfg: cfg}
-		delay := setConf(c, DefaultConf)
+
+		delay, autoUnmarshal := setConf(c, DefaultConf)
+
 		common.Fatal(cfg.Read())
 		delay()
+		autoUnmarshal()
+
 		common.Fatal(cfg.Unmarshal(&c))
+
+		c.autoUnmarshal = autoUnmarshal
 
 		return c
 	}
@@ -151,7 +158,7 @@ func getConfName(t reflect.Value) string {
 	return key
 }
 
-func setConf(conf *Conf, value []interface{}) func() {
+func setConf(conf *Conf, value []interface{}) (func(), func()) {
 	confs, disableDebug, autoUnmarshal := ztype.Map{}, false, []func(){}
 	setConf := func(disableWrite bool) func(key string, value interface{}) {
 		if !disableWrite {
@@ -201,7 +208,7 @@ func setConf(conf *Conf, value []interface{}) func() {
 
 		if isPtr {
 			autoUnmarshal = append(autoUnmarshal, func() {
-				_ = conf.cfg.UnmarshalKey(name, &c)
+				_ = conf.cfg.UnmarshalKey(name, c, true)
 			})
 		}
 	}
@@ -211,11 +218,12 @@ func setConf(conf *Conf, value []interface{}) func() {
 	}
 
 	return func() {
-		for k, v := range confs {
-			conf.cfg.SetDefault(k, v)
+			for k, v := range confs {
+				conf.cfg.SetDefault(k, v)
+			}
+		}, func() {
+			for _, f := range autoUnmarshal {
+				f()
+			}
 		}
-		for _, f := range autoUnmarshal {
-			f()
-		}
-	}
 }
