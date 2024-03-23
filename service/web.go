@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/zlsgo/app_core/common"
 
@@ -82,6 +83,8 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 		for _, middleware := range middlewares {
 			r.Use(middleware)
 		}
+
+		r.Injector().(zdi.Injector).SetParent(app.DI.(zdi.Injector))
 
 		return &Web{
 			Engine: r,
