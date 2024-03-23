@@ -1555,6 +1555,8 @@ github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6Mwd
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/sohaha/zlsgo v1.7.4 h1:g7bdA5fWoJLmjksbrPpXfYZm3ogcBWKZTqTIJcpCdxY=
 github.com/sohaha/zlsgo v1.7.4/go.mod h1:MBjtFRux3Ygww2NvAZbPyw8KKkIAfIRIl0UmeBNGmx0=
+github.com/sohaha/zlsgo v1.7.5 h1:x58lLQqnSwxs9IiNXLONjmGA9gFYmUw0Uhd7yWvvLf8=
+github.com/sohaha/zlsgo v1.7.5/go.mod h1:MBjtFRux3Ygww2NvAZbPyw8KKkIAfIRIl0UmeBNGmx0=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
 github.com/sourcegraph/conc v0.3.0/go.mod h1:Sdozi7LEKbFPqYX2/J+iBAM6HpqSLTASQIKqDmF7Mt0=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
