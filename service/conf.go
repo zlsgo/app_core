@@ -1,6 +1,8 @@
 package service
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/zlsgo/app_core/common"
@@ -35,14 +37,27 @@ type BaseConf struct {
 	DisableDebug bool `z:"-"`
 }
 
-// ConfKey returns the configuration key for the BaseConf struct
+func init() {
+	// Set the name of the configuration file.
+	if ConfFileName == "" {
+		ConfFileName = os.Args[0]
+		ConfFileName = filepath.Base(ConfFileName)
+	}
+}
+
+// ConfKey is used to get the configuration key.
 func (BaseConf) ConfKey() string {
 	return "base"
 }
 
+// DisableWrite disables writing to the configuration.
+func (BaseConf) DisableWrite() bool {
+	return true
+}
+
 var (
 	// fileName is the name of the configuration file.
-	fileName = "conf"
+	ConfFileName = ""
 
 	// LogPrefix is the prefix for log messages.
 	LogPrefix = ""
@@ -51,7 +66,7 @@ var (
 	AppName = "ZlsAPP"
 
 	// debug determines whether debug mode is enabled.
-	debug = true
+	debug = false
 )
 
 var (
@@ -99,7 +114,7 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 //	    o.PrimaryAliss = "dev"
 //	}
 func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
-	cfg := gconf.New(fileName, func(o *gconf.Options) {
+	cfg := gconf.New(ConfFileName, func(o *gconf.Options) {
 		o.EnvPrefix = AppName
 		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
