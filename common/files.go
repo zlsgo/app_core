@@ -68,9 +68,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		}
 
 		if _, err := io.Copy(buf, f); err != nil {
-			if err != nil {
-				return nil, invalidInput(zerror.With(err, "文件读取失败"))
-			}
+			return nil, invalidInput(zerror.With(err, "文件读取失败"))
 		}
 
 		_ = f.Close()
@@ -84,9 +82,9 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		mt := zfile.GetMimeType(v.Filename, b)
 		n := strings.Split(mt, "/")
 		if len(n) < 2 {
-			return nil, invalidInput(errors.New("文件类型错误"))
+			return nil, invalidInput(errors.New("文件类型无法识别"))
 		}
-		v.Header.Set("MimeType", mt)
+
 		if len(o.MimeType) > 0 {
 			ok := false
 			for _, v := range o.MimeType {
@@ -100,15 +98,14 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 				return nil, invalidInput(errors.New("不支持的文件类型"))
 			}
 		}
-
+		v.Header.Set("MimeType", mt)
 		ext := filepath.Ext(v.Filename)
 		if ext == "" {
 			if len(n) > 1 {
-				ext = "." + n[len(n)]
+				ext = "." + strings.SplitN(n[len(n)-1], ";", 2)[0]
 			}
 		}
-
-		id := zstring.Md5Byte(b) + ext
+		id := zstring.Md5Byte(b) + strings.ToLower(ext)
 		uploads[id] = v
 
 		buf.Reset()
