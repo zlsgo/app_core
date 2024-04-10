@@ -15,18 +15,21 @@ import (
 )
 
 type UploadOption struct {
-	Key      string
-	Dir      string
-	MimeType []string
-	MaxSize  int64
+	Key          string
+	Dir          string
+	MimeType     []string
+	MaxSize      int64
+	CustomFilter func(r *UploadResult) error
 }
 
 type UploadResult struct {
-	Path     string `json:"path"`
-	Name     string `json:"name"`
-	MimeType string `json:"mime_type"`
-	Storage  string `json:"storage"`
-	Size     int64  `json:"size"`
+	Path     string                `json:"path"`
+	Name     string                `json:"name"`
+	Ext      string                `json:"ext"`
+	MimeType string                `json:"mime_type"`
+	Storage  string                `json:"storage"`
+	Size     int64                 `json:"size"`
+	file     *multipart.FileHeader `json:"-"`
 }
 
 func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([]UploadResult, error) {
@@ -58,7 +61,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 	}
 
 	invalidInput := zerror.WrapTag(zerror.InvalidInput)
-	uploads := make(map[string]*multipart.FileHeader, len(files))
+	uploads := make([]UploadResult, 0, len(files))
 	buf := bytes.NewBuffer(nil)
 
 	for _, v := range files {
@@ -85,6 +88,8 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 			return nil, invalidInput(errors.New("文件类型无法识别"))
 		}
 
+		mt = strings.SplitN(mt, ";", 2)[0]
+
 		if len(o.MimeType) > 0 {
 			ok := false
 			for _, v := range o.MimeType {
@@ -98,34 +103,44 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 				return nil, invalidInput(errors.New("不支持的文件类型"))
 			}
 		}
-		v.Header.Set("MimeType", mt)
+
 		ext := filepath.Ext(v.Filename)
 		if ext == "" {
 			if len(n) > 1 {
-				ext = "." + strings.SplitN(n[len(n)-1], ";", 2)[0]
+				ext = "." + n[len(n)-1]
 			}
 		}
-		id := zstring.Md5Byte(b) + strings.ToLower(ext)
-		uploads[id] = v
 
+		ext = strings.ToLower(ext)
+
+		r := UploadResult{
+			Path:     zstring.Md5Byte(b) + ext,
+			Name:     v.Filename,
+			Ext:      ext,
+			Size:     v.Size,
+			Storage:  "local",
+			MimeType: mt,
+			file:     v,
+		}
+
+		if o.CustomFilter != nil {
+			if err = o.CustomFilter(&r); err != nil {
+				return nil, invalidInput(err)
+			}
+		}
+
+		uploads = append(uploads, r)
 		buf.Reset()
 	}
 
-	res := make([]UploadResult, 0, len(uploads))
-	for n, f := range uploads {
-		err = c.SaveUploadedFile(f, uploadDir+n)
+	for i := range uploads {
+		err = c.SaveUploadedFile(uploads[i].file, uploads[i].Path)
 		if err != nil {
 			return nil, zerror.With(err, "文件保存失败")
 		}
-		res = append(res, UploadResult{
-			Path:     "/" + zfile.SafePath(uploadDir+n),
-			Name:     f.Filename,
-			Size:     f.Size,
-			Storage:  "local",
-			MimeType: strings.SplitN(f.Header.Get("MimeType"), ";", 2)[0],
-		})
+		uploads[i].Path = "/" + zfile.SafePath(uploadDir+uploads[i].Path)
+		uploads[i].file = nil
 	}
 
-	return res, nil
-
+	return uploads, nil
 }
