@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"mime/multipart"
 	"path/filepath"
 	"strings"
 
@@ -15,21 +14,22 @@ import (
 )
 
 type UploadOption struct {
-	Key          string
-	Dir          string
-	MimeType     []string
-	MaxSize      int64
-	CustomFilter func(r *UploadResult) error
+	Key              string
+	Dir              string
+	MimeType         []string
+	MaxSize          int64
+	CustomFilter     func(r *UploadResult) error
+	CustomProcessing func(r *UploadResult) error
 }
 
 type UploadResult struct {
-	Path     string                `json:"path"`
-	Name     string                `json:"name"`
-	Ext      string                `json:"ext"`
-	MimeType string                `json:"mime_type"`
-	Storage  string                `json:"storage"`
-	Size     int64                 `json:"size"`
-	file     *multipart.FileHeader `json:"-"`
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Ext      string `json:"ext"`
+	MimeType string `json:"mime_type"`
+	Storage  string `json:"storage"`
+	Size     int64  `json:"size"`
+	Body     []byte `json:"-"`
 }
 
 func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([]UploadResult, error) {
@@ -120,7 +120,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 			Size:     v.Size,
 			Storage:  "local",
 			MimeType: mt,
-			file:     v,
+			Body:     b,
 		}
 
 		if o.CustomFilter != nil {
@@ -134,12 +134,17 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 	}
 
 	for i := range uploads {
-		err = c.SaveUploadedFile(uploads[i].file, uploads[i].Path)
-		if err != nil {
-			return nil, zerror.With(err, "文件保存失败")
+		if o.CustomProcessing != nil {
+			if err = o.CustomProcessing(&uploads[i]); err != nil {
+				return nil, invalidInput(err)
+			}
+		} else {
+			err = zfile.WriteFile(uploadDir+uploads[i].Path, uploads[i].Body)
+			if err != nil {
+				return nil, zerror.With(err, "文件保存失败")
+			}
+			uploads[i].Path = "/" + zfile.SafePath(uploadDir+uploads[i].Path)
 		}
-		uploads[i].Path = "/" + zfile.SafePath(uploadDir+uploads[i].Path)
-		uploads[i].file = nil
 	}
 
 	return uploads, nil
