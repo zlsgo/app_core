@@ -8,6 +8,7 @@ import (
 	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/ztype"
+	"github.com/sohaha/zlsgo/zutil"
 	gconf "github.com/zlsgo/conf"
 )
 
@@ -118,9 +119,7 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 		o.EnvPrefix = AppName
 		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
-		for _, f := range opt {
-			f(o)
-		}
+		*o = zutil.Optional(*o, opt...)
 	})
 
 	return func() *Conf {
@@ -138,6 +137,16 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 
 		return c
 	}
+}
+
+type DefaultConfValue interface {
+	ConfKey() string
+	DisableWrite() bool
+}
+
+// RegisterDefaultConf registers a default configuration value.
+func RegisterDefaultConf(conf DefaultConfValue) {
+	DefaultConf = append(DefaultConf, conf)
 }
 
 func (c *Conf) Write() error {

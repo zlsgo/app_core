@@ -7,6 +7,7 @@ import (
 	"github.com/sohaha/zlsgo/zfile"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zstring"
+	"github.com/sohaha/zlsgo/zutil"
 )
 
 // App represents an application.
@@ -23,15 +24,12 @@ var (
 
 // NewApp creates a new App with the provided options.
 func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
-	b := BaseConf{
+	baseConf := zutil.Optional(BaseConf{
 		Debug: debug,
 		Zone:  8,
 		Port:  "3788",
-	}
-	for _, o := range opt {
-		o(&b)
-	}
-	DefaultConf = append(DefaultConf, b)
+	}, opt...)
+	RegisterDefaultConf(baseConf)
 
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{
