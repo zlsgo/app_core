@@ -59,6 +59,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 		r.Log = app.Log
 		r.AllowQuerySemicolons = true
 		zlog.Log = r.Log
+		znet.Log = r.Log
 
 		r.BindStructSuffix = ""
 		r.BindStructDelimiter = "-"

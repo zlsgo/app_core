@@ -7,6 +7,7 @@ import (
 
 	"github.com/zlsgo/app_core/common"
 
+	"github.com/sohaha/zlsgo/znet"
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/sohaha/zlsgo/zutil"
 	gconf "github.com/zlsgo/conf"
@@ -34,6 +35,12 @@ type BaseConf struct {
 	// Pprof specifies if pprof endpoints are enabled.
 	Pprof bool `z:"pprof,omitempty"`
 
+	// HotReload specifies if hot reload is enabled.
+	HotReload bool `z:"hot_reload,omitempty"`
+
+	// HotReloadCheck specifies if hot reload check is enabled.
+	HotReloadCheck bool `z:"hot_reload_check,omitempty"`
+
 	// DisableDebug specifies if debug mode is disabled.
 	DisableDebug bool `z:"-"`
 }
@@ -56,6 +63,22 @@ func (BaseConf) DisableWrite() bool {
 	return true
 }
 
+func (b BaseConf) Reload(r *Web, conf *Conf) {
+	if !baseConf.HotReload {
+		return
+	}
+
+	err := conf.Unmarshal(b.ConfKey(), &b)
+	if err != nil || reflect.DeepEqual(baseConf, b) {
+		return
+	}
+
+	if !baseConf.HotReloadCheck {
+		znet.CloseHotRestartFileMd5()
+	}
+	r.Restart()
+}
+
 var (
 	// fileName is the name of the configuration file.
 	ConfFileName = ""
@@ -72,14 +95,20 @@ var (
 
 var (
 	DefaultConf []interface{}
+	baseConf    = BaseConf{
+		Debug: debug,
+		Zone:  8,
+		Port:  "3788",
+	}
 )
 
 // Conf represents the configuration struct.
 type Conf struct {
 	cfg *gconf.Confhub // cfg is used to manage the configuration settings.
 
-	Base          BaseConf // Base represents the base configuration settings.
-	autoUnmarshal func()   `z:"-"`
+	Base          BaseConf      // Base represents the base configuration settings.
+	autoUnmarshal func()        `z:"-"`
+	reloads       []interface{} `z:"-"`
 }
 
 // Get retrieves the value associated with the given key from the Conf object.
@@ -132,6 +161,9 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 		autoUnmarshal()
 
 		common.Fatal(cfg.Unmarshal(&c))
+
+		// Because the basic configuration is not a pointer type, we need to reassign it here.
+		baseConf = c.Base
 
 		c.autoUnmarshal = autoUnmarshal
 
@@ -194,8 +226,13 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 	}
 
 	for i := range value {
-		c := value[i]
-		v := reflect.ValueOf(c)
+		v := reflect.ValueOf(value[i])
+		isPtr := v.Kind() == reflect.Ptr
+		name := getConfName(v)
+		if isPtr {
+			v = v.Elem()
+		}
+
 		d := v.MethodByName("DisableWrite")
 		disableWrite := false
 		if d.IsValid() {
@@ -203,14 +240,17 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 				disableWrite = f()
 			}
 		}
-		isPtr := v.Kind() == reflect.Ptr
-		name := getConfName(v)
-		v = reflect.Indirect(v)
+
+		r := v.MethodByName("Reload")
+		if r.IsValid() && r.Kind() == reflect.Func {
+			conf.reloads = append(conf.reloads, r.Interface())
+		}
+
 		set := setConf(disableWrite)
 		t := v.Type()
 		switch t.Kind() {
 		case reflect.Struct:
-			m := ztype.ToMap(c)
+			m := ztype.ToMap(value[i])
 			if name == "base" {
 				disableDebug = m.Get("DisableDebug").Bool()
 			}
@@ -227,12 +267,12 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 				set(name, v)
 			}
 		default:
-			set(name, c)
+			set(name, value[i])
 		}
 
 		if isPtr {
 			autoUnmarshal = append(autoUnmarshal, func() {
-				_ = conf.cfg.UnmarshalKey(name, c, true)
+				_ = conf.cfg.UnmarshalKey(name, value[i], true)
 			})
 		}
 	}

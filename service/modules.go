@@ -100,7 +100,6 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 		moduleTotal := len(modules)
 		runs := make([]func() error, 0, moduleTotal)
 		starts := make([]func() error, 0, moduleTotal)
-		reloads := make([]func(), 0, moduleTotal)
 
 		type module struct {
 			vof   reflect.Value
@@ -156,17 +155,15 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 				PrintLog("Module Success", logname)
 
 				reload := vof.MethodByName("Reload")
-				if reload.IsValid() {
-					f, ok := reload.Interface().(func(zdi.Invoker) error)
-					if ok {
-						reloads = append(reloads, func() {
-							if err := f(app.DI); err != nil {
-								zlog.Error(zerror.With(err, name+" failed to Reload"))
-							}
-						})
-					} else {
-						zlog.Warn(name + " reload method is not valid, it should be: " + zlog.OpTextWrap(zlog.OpBold, "func(zdi.Invoker) error"))
-					}
+				if reload.IsValid() && reload.Type().Kind() == reflect.Func {
+					f := reload.Interface()
+					app.Conf.reloads = append(app.Conf.reloads, func() error {
+						err := app.DI.InvokeWithErrorOnly(f)
+						if err != nil {
+							return zerror.With(err, name+" failed to Reload")
+						}
+						return nil
+					})
 				}
 
 				return nil
@@ -190,11 +187,13 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 			if !b.CAS(false, true) {
 				return
 			}
-
 			if e.Op == fsnotify.Write {
 				app.Conf.autoUnmarshal()
-				for _, fn := range reloads {
-					fn()
+				for _, fn := range app.Conf.reloads {
+					err = app.DI.InvokeWithErrorOnly(fn)
+					if err != nil {
+						zlog.Error(err)
+					}
 				}
 			}
 			b.Store(false)
