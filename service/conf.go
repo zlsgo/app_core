@@ -60,16 +60,33 @@ func (BaseConf) DisableWrite() bool {
 	return true
 }
 
-func (BaseConf) Reload(r *Web, conf *Conf) {
+func (b BaseConf) fix(c *gconf.Confhub, bc BaseConf) BaseConf {
+	var m ztype.Map
+	_ = c.UnmarshalKey(b.ConfKey(), &m)
+
+	if !m.Has("zone") {
+		bc.Zone = baseConf.Zone
+	}
+
+	if !m.Has("HotReload") {
+		bc.HotReload = baseConf.HotReload
+	}
+
+	return bc
+}
+
+func (b BaseConf) Reload(r *Web, conf *Conf) {
 	if !baseConf.HotReload {
 		return
 	}
 
 	var nb BaseConf
 	err := conf.Unmarshal(nb.ConfKey(), &nb)
+	nb = nb.fix(conf.cfg, nb)
 	if err != nil || reflect.DeepEqual(baseConf, nb) {
 		return
 	}
+
 	r.Restart()
 }
 
@@ -90,9 +107,10 @@ var (
 var (
 	DefaultConf []interface{}
 	baseConf    = BaseConf{
-		Debug: debug,
-		Zone:  8,
-		Port:  "3788",
+		Debug:     debug,
+		Zone:      8,
+		Port:      "3788",
+		HotReload: true,
 	}
 )
 
@@ -133,7 +151,7 @@ func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 	return func(di zdi.Injector) *Conf {
 		c := &Conf{cfg: cfg}
 
-		delay, autoUnmarshal := setConf(di, c, DefaultConf)
+		delay, autoUnmarshal := setConf(c, DefaultConf)
 
 		common.Fatal(cfg.Read())
 		delay()
@@ -142,7 +160,7 @@ func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 		common.Fatal(cfg.Unmarshal(&c))
 
 		// Because the basic configuration is not a pointer type, we need to reassign it here.
-		baseConf = c.Base
+		baseConf = baseConf.fix(cfg, c.Base)
 
 		c.autoUnmarshal = autoUnmarshal
 		return c
@@ -184,7 +202,7 @@ func getConfName(t reflect.Value) (key string, isVar bool) {
 	return
 }
 
-func setConf(di zdi.TypeMapper, conf *Conf, value []interface{}) (func(), func()) {
+func setConf(conf *Conf, value []interface{}) (func(), func()) {
 	confs, disableDebug, autoUnmarshal := ztype.Map{}, false, []func(){}
 	setConf := func(disableWrite bool) func(key string, value interface{}) {
 		if !disableWrite {
