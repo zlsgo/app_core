@@ -7,7 +7,7 @@ import (
 
 	"github.com/zlsgo/app_core/common"
 
-	"github.com/sohaha/zlsgo/znet"
+	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/sohaha/zlsgo/zutil"
 	gconf "github.com/zlsgo/conf"
@@ -38,9 +38,6 @@ type BaseConf struct {
 	// HotReload specifies if hot reload is enabled.
 	HotReload bool `z:"hot_reload,omitempty"`
 
-	// HotReloadCheck specifies if hot reload check is enabled.
-	HotReloadCheck bool `z:"hot_reload_check,omitempty"`
-
 	// DisableDebug specifies if debug mode is disabled.
 	DisableDebug bool `z:"-"`
 }
@@ -63,18 +60,15 @@ func (BaseConf) DisableWrite() bool {
 	return true
 }
 
-func (b BaseConf) Reload(r *Web, conf *Conf) {
+func (BaseConf) Reload(r *Web, conf *Conf) {
 	if !baseConf.HotReload {
 		return
 	}
 
-	err := conf.Unmarshal(b.ConfKey(), &b)
-	if err != nil || reflect.DeepEqual(baseConf, b) {
+	var nb BaseConf
+	err := conf.Unmarshal(nb.ConfKey(), &nb)
+	if err != nil || reflect.DeepEqual(baseConf, nb) {
 		return
-	}
-
-	if !baseConf.HotReloadCheck {
-		znet.CloseHotRestartFileMd5()
 	}
 	r.Restart()
 }
@@ -112,38 +106,23 @@ type Conf struct {
 }
 
 // Get retrieves the value associated with the given key from the Conf object.
-//
-// Parameters:
-// - key: the key used to identify the value to retrieve.
-//
-// Returns:
-// - ztype.Type: the value associated with the given key.
 func (c *Conf) Get(key string) ztype.Type {
-	return c.cfg.Get(key)
+	return c.cfg.GetAll().Get(key)
+}
+
+// Set updates the value of a configuration key.
+func (c *Conf) Set(key string, value interface{}) {
+	c.cfg.Set(key, value)
 }
 
 // Unmarshal unmarshals the value associated with the given key in the Conf struct.
-//
 // It takes a string key and a pointer to an interface{} as its parameters.
-// The function returns an error.
 func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 	return c.cfg.UnmarshalKey(key, &rawVal)
 }
 
 // NewConf creates a new Conf object with the given options.
-//
-// opt: The optional configuration options.
-//
-//	These options are functions that modify the Conf object.
-//	They can be used to customize the behavior of the Conf object.
-//	The functions should accept a pointer to a gconf.Options object.
-//	Example:
-//	func(o *gconf.Options) {
-//	    o.EnvPrefix = AppName
-//	    o.AutoCreate = true
-//	    o.PrimaryAliss = "dev"
-//	}
-func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
+func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 	cfg := gconf.New(ConfFileName, func(o *gconf.Options) {
 		o.EnvPrefix = AppName
 		o.AutoCreate = true
@@ -151,10 +130,10 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 		*o = zutil.Optional(*o, opt...)
 	})
 
-	return func() *Conf {
+	return func(di zdi.Injector) *Conf {
 		c := &Conf{cfg: cfg}
 
-		delay, autoUnmarshal := setConf(c, DefaultConf)
+		delay, autoUnmarshal := setConf(di, c, DefaultConf)
 
 		common.Fatal(cfg.Read())
 		delay()
@@ -166,7 +145,6 @@ func NewConf(opt ...func(o *gconf.Options)) func() *Conf {
 		baseConf = c.Base
 
 		c.autoUnmarshal = autoUnmarshal
-
 		return c
 	}
 }
@@ -185,21 +163,13 @@ func (c *Conf) Write() error {
 	return c.cfg.Write()
 }
 
-// Set updates the value of a configuration key.
-//
-// key: the key of the configuration property to be updated.
-// value: the new value to be set for the configuration property.
-func (c *Conf) Set(key string, value interface{}) {
-	c.cfg.Set(key, value)
-}
-
-func getConfName(t reflect.Value) string {
-	var key string
+func getConfName(t reflect.Value) (key string, isVar bool) {
 	getConfKey := t.MethodByName("ConfKey")
 	if getConfKey.IsValid() {
 		g, ok := getConfKey.Interface().(func() string)
 		if ok {
 			key = g()
+			isVar = true
 		}
 	}
 
@@ -211,10 +181,10 @@ func getConfName(t reflect.Value) string {
 		}
 	}
 
-	return key
+	return
 }
 
-func setConf(conf *Conf, value []interface{}) (func(), func()) {
+func setConf(di zdi.TypeMapper, conf *Conf, value []interface{}) (func(), func()) {
 	confs, disableDebug, autoUnmarshal := ztype.Map{}, false, []func(){}
 	setConf := func(disableWrite bool) func(key string, value interface{}) {
 		if !disableWrite {
@@ -226,12 +196,10 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 	}
 
 	for i := range value {
+		i := i
 		v := reflect.ValueOf(value[i])
 		isPtr := v.Kind() == reflect.Ptr
-		name := getConfName(v)
-		if isPtr {
-			v = v.Elem()
-		}
+		name, _ := getConfName(v)
 
 		d := v.MethodByName("DisableWrite")
 		disableWrite := false
@@ -243,12 +211,14 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 
 		r := v.MethodByName("Reload")
 		if r.IsValid() && r.Kind() == reflect.Func {
+			// TODO: 考虑使用 reflect.DeepEqual 来判断是否需要通知
 			conf.reloads = append(conf.reloads, r.Interface())
 		}
 
 		set := setConf(disableWrite)
-		t := v.Type()
-		switch t.Kind() {
+		typ := reflect.Indirect(v).Type()
+
+		switch typ.Kind() {
 		case reflect.Struct:
 			m := ztype.ToMap(value[i])
 			if name == "base" {
@@ -256,7 +226,7 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 			}
 			set(name, m)
 		case reflect.Slice:
-			switch t.Elem().Kind() {
+			switch typ.Elem().Kind() {
 			case reflect.Struct:
 				m := make([]map[string]interface{}, v.Len())
 				for i := 0; i < v.Len(); i++ {
@@ -272,7 +242,7 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 
 		if isPtr {
 			autoUnmarshal = append(autoUnmarshal, func() {
-				_ = conf.cfg.UnmarshalKey(name, value[i], true)
+				_ = conf.cfg.UnmarshalKey(name, value[i])
 			})
 		}
 	}
