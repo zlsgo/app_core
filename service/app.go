@@ -24,7 +24,8 @@ var (
 
 // NewApp creates a new App with the provided options.
 func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
-	RegisterDefaultConf(zutil.Optional(baseConf, opt...))
+	baseConf = zutil.Optional(baseConf, opt...)
+	RegisterDefaultConf(baseConf)
 
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{

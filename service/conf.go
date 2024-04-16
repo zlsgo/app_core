@@ -4,10 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/zdi"
+	"github.com/sohaha/zlsgo/zlog"
+	"github.com/sohaha/zlsgo/znet"
 	"github.com/sohaha/zlsgo/ztype"
 	"github.com/sohaha/zlsgo/zutil"
 	gconf "github.com/zlsgo/conf"
@@ -68,6 +71,10 @@ func (b BaseConf) fix(c *gconf.Confhub, bc BaseConf) BaseConf {
 		bc.Zone = baseConf.Zone
 	}
 
+	if !m.Has("port") {
+		bc.Port = baseConf.Port
+	}
+
 	if !m.Has("HotReload") {
 		bc.HotReload = baseConf.HotReload
 	}
@@ -84,6 +91,20 @@ func (b BaseConf) Reload(r *Web, conf *Conf) {
 	err := conf.Unmarshal(nb.ConfKey(), &nb)
 	nb = nb.fix(conf.cfg, nb)
 	if err != nil || reflect.DeepEqual(baseConf, nb) {
+		return
+	}
+
+	var port int
+	addr := strings.SplitN(nb.Port, ":", 2)
+	if len(addr) != 2 {
+		port = ztype.ToInt(port)
+	} else {
+		port = ztype.ToInt(addr[1])
+	}
+
+	port, _ = znet.Port(port, false)
+	if port == 0 {
+		zlog.Errorf("port is not valid:%s", nb.Port)
 		return
 	}
 
@@ -161,6 +182,7 @@ func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 
 		// Because the basic configuration is not a pointer type, we need to reassign it here.
 		baseConf = baseConf.fix(cfg, c.Base)
+		c.Base = baseConf
 
 		c.autoUnmarshal = autoUnmarshal
 		return c
