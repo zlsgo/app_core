@@ -39,8 +39,9 @@ func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
 
 // initLog initializes the logger with the given configuration.
 func initLog(c *Conf) *zlog.Logger {
-	log := zlog.Log
-	log.SetPrefix(LogPrefix)
+	log := zlog.New(LogPrefix)
+
+	zlog.SetDefault(log)
 
 	logFlags := zlog.BitLevel | zlog.BitTime
 	if c.Base.LogPosition {

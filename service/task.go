@@ -35,7 +35,7 @@ func InitTask(tasks *[]Task) (err error) {
 		}
 
 		next, _ := cron.ParseNextTime(task.Cron)
-		PrintLog("", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"]("+ztime.FormatTime(next)+")"))
+		PrintLog("", zlog.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"]("+ztime.FormatTime(next)+")"))
 	}
 
 	t.Run()

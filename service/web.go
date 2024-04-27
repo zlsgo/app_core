@@ -10,7 +10,6 @@ import (
 	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/zlsgo/app_core/common"
 
-	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/znet"
 	"github.com/sohaha/zlsgo/zpprof"
 	"github.com/sohaha/zlsgo/zstring"
@@ -57,10 +56,8 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 	return func(app *App, middlewares []znet.Handler, ps []Module) (*Web, *znet.Engine) {
 		r := znet.New()
 		r.Log = app.Log
+		znet.Log = app.Log
 		r.AllowQuerySemicolons = true
-		zlog.Log = r.Log
-		znet.Log = r.Log
-
 		r.BindStructSuffix = ""
 		r.BindStructDelimiter = "-"
 		r.SetAddr(app.Conf.Base.Port)

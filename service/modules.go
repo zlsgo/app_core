@@ -123,7 +123,7 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 
 		for _, name := range moduleKeys {
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
-			logname := zlog.Log.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
+			logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
 			PrintLog("Module Load", logname)
 
 			if err := loadModule(di, name, mod); err != nil {
