@@ -143,7 +143,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 			if err != nil {
 				return nil, zerror.With(err, "文件保存失败")
 			}
-			uploads[i].Path = "/" + zfile.SafePath(uploadDir+uploads[i].Path)
+			uploads[i].Path = "/" + zfile.SafePath(uploadDir+uploads[i].Path, zfile.ProgramPath())
 		}
 	}
 
