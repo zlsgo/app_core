@@ -27,27 +27,25 @@ func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
 	baseConf = zutil.Optional(baseConf, opt...)
 	RegisterDefaultConf(baseConf)
 
+	log := zlog.New(LogPrefix)
+	log.ResetFlags(zlog.BitLevel | zlog.BitTime)
+	zlog.SetDefault(log)
+
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{
 			DI:   di,
 			Conf: conf,
-			Log:  initLog(conf),
+			Log:  setLog(log, conf),
 		}
 		return Global
 	}
 }
 
-// initLog initializes the logger with the given configuration.
-func initLog(c *Conf) *zlog.Logger {
-	log := zlog.New(LogPrefix)
-
-	zlog.SetDefault(log)
-
-	logFlags := zlog.BitLevel | zlog.BitTime
+// setLog initializes the logger with the given configuration.
+func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 	if c.Base.LogPosition {
-		logFlags = logFlags | zlog.BitLongFile
+		log.ResetFlags(log.GetFlags() | zlog.BitLongFile)
 	}
-	log.ResetFlags(logFlags)
 
 	if c.Base.LogDir != "" {
 		log.SetSaveFile(zfile.RealPath(c.Base.LogDir, true)+"app.log", true)
