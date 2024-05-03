@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/sohaha/zlsgo/ztime"
 	"github.com/zlsgo/app_core/common"
 
 	"github.com/sohaha/zlsgo/zdi"
@@ -108,11 +109,11 @@ func (b BaseConf) Reload(r *Web, conf *Conf) {
 		return
 	}
 
-	r.Restart()
+	_ = r.Restart()
 }
 
 var (
-	// fileName is the name of the configuration file.
+	// ConfFileName is the name of the configuration file.
 	ConfFileName = ""
 
 	// LogPrefix is the prefix for log messages.
@@ -185,6 +186,9 @@ func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 		c.Base = baseConf
 
 		c.autoUnmarshal = autoUnmarshal
+
+		ztime.SetTimeZone(int(c.Base.Zone))
+				
 		return c
 	}
 }
