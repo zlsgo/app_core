@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/sohaha/zlsgo/zdi"
+	"github.com/sohaha/zlsgo/zerror"
 	"github.com/sohaha/zlsgo/zreflect"
 	"github.com/zlsgo/app_core/common"
 
@@ -130,7 +130,7 @@ func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 
 			err = dynamicAssign(valueOf, app)
 			if err != nil {
-				return err
+				return zerror.With(err, controller+" router assign error")
 			}
 
 			name := getWebRouterName(value, controller)
@@ -140,16 +140,12 @@ func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 				err = r.Group("/").BindStruct(name, c)
 			}
 			if err != nil {
-				return err
+				return zerror.With(err, controller+" router bind error")
 			}
 		}
 		return nil
 	})
 
-	if err != nil {
-		err = fmt.Errorf("初始化路由失败: %w", err)
-
-	}
 	return
 }
 
