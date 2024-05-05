@@ -13,7 +13,6 @@ import (
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/znet"
 	"github.com/sohaha/zlsgo/ztype"
-	"github.com/sohaha/zlsgo/zutil"
 	gconf "github.com/zlsgo/conf"
 )
 
@@ -162,12 +161,15 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 }
 
 // NewConf creates a new Conf object with the given options.
-func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
-	cfg := gconf.New(ConfFileName, func(o *gconf.Options) {
+func NewConf(opt ...func(o gconf.Options) gconf.Options) func(di zdi.Injector) *Conf {
+	cfg := gconf.New(ConfFileName, func(o gconf.Options) gconf.Options {
 		o.EnvPrefix = AppName
 		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
-		*o = zutil.Optional(*o, opt...)
+		for i := range opt {
+			o = opt[i](o)
+		}
+		return o
 	})
 
 	return func(di zdi.Injector) *Conf {
@@ -188,7 +190,7 @@ func NewConf(opt ...func(o *gconf.Options)) func(di zdi.Injector) *Conf {
 		c.autoUnmarshal = autoUnmarshal
 
 		ztime.SetTimeZone(int(c.Base.Zone))
-				
+
 		return c
 	}
 }

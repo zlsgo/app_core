@@ -7,7 +7,6 @@ import (
 	"github.com/sohaha/zlsgo/zfile"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zstring"
-	"github.com/sohaha/zlsgo/zutil"
 )
 
 // App represents an application.
@@ -23,8 +22,11 @@ var (
 )
 
 // NewApp creates a new App with the provided options.
-func NewApp(opt ...func(o *BaseConf)) func(conf *Conf, di zdi.Injector) *App {
-	baseConf = zutil.Optional(baseConf, opt...)
+func NewApp(opt ...func(o BaseConf)BaseConf) func(conf *Conf, di zdi.Injector) *App {
+	for i := range opt {
+		baseConf = opt[i](baseConf)
+	}
+
 	RegisterDefaultConf(baseConf)
 
 	log := zlog.New(LogPrefix)
