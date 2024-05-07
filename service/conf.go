@@ -50,6 +50,7 @@ func init() {
 	if ConfFileName == "" {
 		ConfFileName = os.Args[0]
 		ConfFileName = filepath.Base(ConfFileName)
+		ConfFileName = strings.TrimSuffix(ConfFileName, filepath.Ext(ConfFileName))
 	}
 }
 

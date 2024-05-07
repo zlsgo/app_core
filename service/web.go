@@ -76,6 +76,7 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 		var errHandler znet.ErrHandlerFunc
 		if err := app.DI.Resolve(&errHandler); err == nil {
 			r.Use(znet.RewriteErrorHandler(errHandler))
+			r.Use(znet.Recovery(errHandler))
 		}
 
 		for _, middleware := range middlewares {
