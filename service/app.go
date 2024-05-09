@@ -22,7 +22,7 @@ var (
 )
 
 // NewApp creates a new App with the provided options.
-func NewApp(opt ...func(o BaseConf)BaseConf) func(conf *Conf, di zdi.Injector) *App {
+func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) *App {
 	for i := range opt {
 		baseConf = opt[i](baseConf)
 	}
@@ -31,7 +31,6 @@ func NewApp(opt ...func(o BaseConf)BaseConf) func(conf *Conf, di zdi.Injector) *
 
 	log := zlog.New(LogPrefix)
 	log.ResetFlags(zlog.BitLevel | zlog.BitTime)
-	zlog.SetDefault(log)
 
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{
@@ -39,6 +38,9 @@ func NewApp(opt ...func(o BaseConf)BaseConf) func(conf *Conf, di zdi.Injector) *
 			Conf: conf,
 			Log:  setLog(log, conf),
 		}
+
+		zlog.SetDefault(log)
+
 		return Global
 	}
 }
