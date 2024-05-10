@@ -20,6 +20,9 @@ type BaseConf struct {
 	// LogDir specifies the directory for log files.
 	LogDir string `z:"log_dir,omitempty"`
 
+	// LogFile log file name
+	LogFile string `z:"log_file,omitempty"`
+
 	// Port specifies the port number for the server.
 	Port string `z:"port,omitempty"`
 

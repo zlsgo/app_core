@@ -4,19 +4,19 @@ import (
 	"github.com/sohaha/zlsgo/zdi"
 )
 
-type Lifecycle struct {
+type Lifecycle[T any] struct {
 	Name  string
 	Load  func(zdi.Invoker) (any, error)
 	Start func(zdi.Invoker) error
-	Done  func(zdi.Invoker) (interface{}, error)
+	Done  func(zdi.Invoker) (T, error)
 }
 
-func New(s Lifecycle) *Module {
-	return &Module{
+func New[T any](s Lifecycle[T]) *Module[T] {
+	return &Module[T]{
 		lifecycle: s,
 	}
 }
 
-func (m *Module) Instance() interface{} {
+func (m *Module[T]) Instance() T {
 	return m.instance
 }

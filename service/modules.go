@@ -93,7 +93,7 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 		_ = assignConf(value, app.Conf)
 		name := getModuleName(mod, value)
 		_ = assignLog(value, app, "[Module "+name+"] ")
-		di.Map(mod)
+		_ = di.Map(mod)
 	}
 
 	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
@@ -106,6 +106,7 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 			mod   Module
 			index int
 		}
+
 		modulesMap := make(map[string]module, moduleTotal)
 		for i := range modules {
 			mod := modules[i]
@@ -124,14 +125,14 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 		for _, name := range moduleKeys {
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
 			logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
-			PrintLog("Module Load", logname)
+			app.printLog("Module Load", logname)
 
 			if err := loadModule(di, name, mod); err != nil {
 				return err
 			}
 
 			starts = append(starts, func() error {
-				// PrintLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
+				// printLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 				if err := zerror.TryCatch(func() error { return mod.Start(di) }); err != nil {
 					return zerror.With(err, name+" failed to Start")
 				}
@@ -140,7 +141,7 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 
 			runs = append(runs, func() error {
 				tasks := mod.Tasks()
-				if err = InitTask(&tasks); err != nil {
+				if err = InitTask(&tasks, app); err != nil {
 					return zerror.With(err, "timed task launch failed")
 				}
 
@@ -152,7 +153,7 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 					return zerror.With(err, name+" failed to Done")
 				}
 
-				PrintLog("Module Success", logname)
+				app.printLog("Module Success", logname)
 
 				reload := vof.MethodByName("Reload")
 				if reload.IsValid() && reload.Type().Kind() == reflect.Func {

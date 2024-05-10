@@ -14,7 +14,7 @@ type Task struct {
 }
 
 // InitTask initializes the tasks using the provided *App.
-func InitTask(tasks *[]Task) (err error) {
+func InitTask(tasks *[]Task, app *App) (err error) {
 	t := cron.New()
 	if len(*tasks) == 0 {
 		return nil
@@ -35,7 +35,7 @@ func InitTask(tasks *[]Task) (err error) {
 		}
 
 		next, _ := cron.ParseNextTime(task.Cron)
-		PrintLog("", zlog.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"]("+ztime.FormatTime(next)+")"))
+		app.printLog("", zlog.ColorTextWrap(zlog.ColorLightGreen, task.Name)+zlog.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"]("+ztime.FormatTime(next)+")"))
 	}
 
 	t.Run()

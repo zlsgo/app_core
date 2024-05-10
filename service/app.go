@@ -51,8 +51,18 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 		log.ResetFlags(log.GetFlags() | zlog.BitLongFile)
 	}
 
+	var logfile string
 	if c.Base.LogDir != "" {
-		log.SetSaveFile(zfile.RealPath(c.Base.LogDir, true)+"app.log", true)
+		if c.Base.LogFile == "" {
+			c.Base.LogFile = "app.log"
+		}
+		logfile = c.Base.LogDir + "/" + c.Base.LogFile
+	} else if c.Base.LogFile != "" {
+		logfile = c.Base.LogFile
+	}
+
+	if logfile != "" {
+		log.SetSaveFile(zfile.RealPath(logfile), true)
 	}
 
 	if c.Base.Debug {
@@ -64,10 +74,10 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 	return log
 }
 
-// PrintLog prints a log message with the given tip and additional values
-func PrintLog(tip string, v ...interface{}) {
+// printLog prints a log message with the given tip and additional values
+func (app *App) printLog(tip string, v ...interface{}) {
 	d := []interface{}{
-		zlog.ColorTextWrap(zlog.ColorLightMagenta, zstring.Pad(tip, 6, " ", zstring.PadLeft)),
+		app.Log.ColorTextWrap(zlog.ColorLightMagenta, zstring.Pad(tip, 6, " ", zstring.PadLeft)),
 	}
 	d = append(d, v...)
 	zlog.Debug(d...)
