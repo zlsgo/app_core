@@ -38,7 +38,7 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 			Conf: conf,
 			Log:  setLog(log, conf),
 		}
-
+		_ = di.Maps(di, conf, Global)
 		zlog.SetDefault(log)
 
 		return Global

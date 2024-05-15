@@ -85,18 +85,25 @@ func (p *ModuleLifeCycle) Stop(di zdi.Invoker) error {
 }
 
 // InitModule initializes the module with the given list of plugins and a dependency injector.
-func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
+func InitModule(modules []Module, app *App) (err error) {
 	for _, mod := range modules {
 		value := zreflect.ValueOf(mod)
 		assignApp(value, app)
-		_ = assignDI(value, di)
+		_ = assignDI(value, app.DI)
 		_ = assignConf(value, app.Conf)
 		name := getModuleName(mod, value)
 		_ = assignLog(value, app, "[Module "+name+"] ")
-		_ = di.Map(mod)
+		_ = app.DI.(zdi.TypeMapper).Map(mod)
 	}
 
-	return di.InvokeWithErrorOnly(func(app *App, tasks *[]Task, controller *[]Controller, r *Web) error {
+	return app.DI.InvokeWithErrorOnly(func() error {
+		var (
+			tasks      *[]Task
+			controller *[]Controller
+			web        *Web
+		)
+		_ = app.DI.Resolve(&tasks, &controller, &web)
+
 		moduleTotal := len(modules)
 		runs := make([]func() error, 0, moduleTotal)
 		starts := make([]func() error, 0, moduleTotal)
@@ -127,13 +134,13 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 			logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
 			app.printLog("Module Load", logname)
 
-			if err := loadModule(di, name, mod); err != nil {
+			if err := loadModule(app.DI.(zdi.Injector), name, mod); err != nil {
 				return err
 			}
 
 			starts = append(starts, func() error {
 				// printLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
-				if err := zerror.TryCatch(func() error { return mod.Start(di) }); err != nil {
+				if err := zerror.TryCatch(func() error { return mod.Start(app.DI) }); err != nil {
 					return zerror.With(err, name+" failed to Start")
 				}
 				return nil
@@ -145,11 +152,13 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 					return zerror.With(err, "timed task launch failed")
 				}
 
-				if err = initRouter(app, r, mod.Controller()); err != nil {
-					return zerror.With(err, "router binding failed")
+				if web != nil {
+					if err = initRouter(app, web, mod.Controller()); err != nil {
+						return zerror.With(err, "router binding failed")
+					}
 				}
 
-				if err := zerror.TryCatch(func() error { return mod.Done(di) }); err != nil {
+				if err := zerror.TryCatch(func() error { return mod.Done(app.DI) }); err != nil {
 					return zerror.With(err, name+" failed to Done")
 				}
 
@@ -183,22 +192,24 @@ func InitModule(modules []Module, app *App, di zdi.Injector) (err error) {
 			}
 		}
 
-		var b = zutil.NewBool(false)
-		app.Conf.cfg.ConfigChange(func(e fsnotify.Event) {
-			if !b.CAS(false, true) {
-				return
-			}
-			if e.Op == fsnotify.Write {
-				app.Conf.autoUnmarshal()
-				for _, fn := range app.Conf.reloads {
-					err = app.DI.InvokeWithErrorOnly(fn)
-					if err != nil {
-						zlog.Error(err)
+		if app.Conf.cfg != nil {
+			var b = zutil.NewBool(false)
+			app.Conf.cfg.ConfigChange(func(e fsnotify.Event) {
+				if !b.CAS(false, true) {
+					return
+				}
+				if e.Op == fsnotify.Write {
+					app.Conf.autoUnmarshal()
+					for _, fn := range app.Conf.reloads {
+						err = app.DI.InvokeWithErrorOnly(fn)
+						if err != nil {
+							zlog.Error(err)
+						}
 					}
 				}
-			}
-			b.Store(false)
-		})
+				b.Store(false)
+			})
+		}
 
 		return nil
 	})
