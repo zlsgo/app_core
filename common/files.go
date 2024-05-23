@@ -19,7 +19,7 @@ type UploadOption struct {
 	MimeType         []string
 	MaxSize          int64
 	CustomFilter     func(r *UploadResult) error
-	CustomProcessing func(r *UploadResult) error
+	CustomProcessing func(r *UploadResult, dir string) error
 }
 
 type UploadResult struct {
@@ -135,7 +135,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 
 	for i := range uploads {
 		if o.CustomProcessing != nil {
-			if err = o.CustomProcessing(&uploads[i]); err != nil {
+			if err = o.CustomProcessing(&uploads[i], uploadDir); err != nil {
 				return nil, invalidInput(err)
 			}
 		} else {
