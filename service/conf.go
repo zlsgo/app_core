@@ -292,7 +292,7 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 
 		if isPtr {
 			autoUnmarshal = append(autoUnmarshal, func() {
-				_ = conf.cfg.UnmarshalKey(name, value[i])
+				_ = conf.cfg.UnmarshalKey(name, value[i], true)
 			})
 		}
 	}
