@@ -66,9 +66,7 @@ func assignLog(value reflect.Value, app *App, name string) error {
 		v := e.FieldByName(d)
 		if v.IsValid() && v.Type().String() == "*zlog.Logger" {
 			pLog := zlog.New(name)
-			pLog.ResetFlags(app.Log.GetFlags())
-			pLog.SetLogLevel(app.Log.GetLogLevel())
-			// pLog.ResetWriter(app.Log.GetWriter())
+			pLog.Writer().Reset(app.Log)
 			if err := zreflect.SetUnexportedField(value, d, pLog); err != nil {
 				return err
 			}
