@@ -129,10 +129,11 @@ func InitModule(modules []Module, app *App) (err error) {
 		moduleKeys := zarray.Keys(modulesMap)
 		sort.Strings(moduleKeys)
 
+		app.printLog("Module", "[ "+strings.Join(moduleKeys, ", ")+" ]")
 		for _, name := range moduleKeys {
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
-			logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
-			app.printLog("Module Load", logname)
+			// logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
+			// app.printLog("Module Load", logname)
 
 			if err := loadModule(app.DI.(zdi.Injector), name, mod); err != nil {
 				return err
@@ -162,7 +163,7 @@ func InitModule(modules []Module, app *App) (err error) {
 					return zerror.With(err, name+" failed to Done")
 				}
 
-				app.printLog("Module Success", logname)
+				// app.printLog("Module Success", logname)
 
 				reload := vof.MethodByName("Reload")
 				if reload.IsValid() && reload.Type().Kind() == reflect.Func {
@@ -193,7 +194,7 @@ func InitModule(modules []Module, app *App) (err error) {
 		}
 
 		if app.Conf.cfg != nil {
-			var b = zutil.NewBool(false)
+			b := zutil.NewBool(false)
 			app.Conf.cfg.ConfigChange(func(e fsnotify.Event) {
 				if !b.CAS(false, true) {
 					return
