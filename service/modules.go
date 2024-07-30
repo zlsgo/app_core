@@ -129,7 +129,7 @@ func InitModule(modules []Module, app *App) (err error) {
 		moduleKeys := zarray.Keys(modulesMap)
 		sort.Strings(moduleKeys)
 
-		app.printLog("Module", "[ "+strings.Join(moduleKeys, ", ")+" ]")
+		app.printLog("Module", "["+strings.Join(moduleKeys, ", ")+"]")
 		for _, name := range moduleKeys {
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
 			// logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
