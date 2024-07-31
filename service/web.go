@@ -128,18 +128,20 @@ func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 			value := reflect.Indirect(valueOf)
 			controller := strings.TrimPrefix(typeOf.String(), "controller.")
 			controller = strings.Replace(controller, ".", "/", -1)
-
 			err = dynamicAssign(valueOf, app)
 			if err != nil {
 				return zerror.With(err, controller+" router assign error")
 			}
 
-			name := getWebRouterName(value, controller)
-			if name == "" {
-				err = r.BindStruct(name, c)
-			} else {
-				err = r.Group("/").BindStruct(name, c)
-			}
+			err = zerror.TryCatch(func() (err error) {
+				name := getWebRouterName(value, controller)
+				if name == "" {
+					err = r.BindStruct(name, c)
+				} else {
+					err = r.Group("/").BindStruct(name, c)
+				}
+				return
+			})
 			if err != nil {
 				return zerror.With(err, controller+" router bind error")
 			}

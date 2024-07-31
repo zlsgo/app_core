@@ -130,7 +130,8 @@ func InitModule(modules []Module, app *App) (err error) {
 		sort.Strings(moduleKeys)
 
 		app.printLog("Module", "["+strings.Join(moduleKeys, ", ")+"]")
-		for _, name := range moduleKeys {
+		for v := range moduleKeys {
+			name := moduleKeys[v]
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
 			// logname := zlog.ColorTextWrap(zlog.ColorLightGreen, zlog.OpTextWrap(zlog.OpBold, name))
 			// app.printLog("Module Load", logname)
@@ -142,7 +143,7 @@ func InitModule(modules []Module, app *App) (err error) {
 			starts = append(starts, func() error {
 				// printLog("Module Start", zlog.Log.ColorTextWrap(zlog.ColorLightGreen, name))
 				if err := zerror.TryCatch(func() error { return mod.Start(app.DI) }); err != nil {
-					return zerror.With(err, name+" failed to Start")
+					return zerror.With(err, name+" module: failed to Start")
 				}
 				return nil
 			})
@@ -150,17 +151,17 @@ func InitModule(modules []Module, app *App) (err error) {
 			runs = append(runs, func() error {
 				tasks := mod.Tasks()
 				if err = InitTask(&tasks, app); err != nil {
-					return zerror.With(err, "timed task launch failed")
+					return zerror.With(err, name+" module: timed task launch failed")
 				}
 
 				if web != nil {
 					if err = initRouter(app, web, mod.Controller()); err != nil {
-						return zerror.With(err, "router binding failed")
+						return zerror.With(err, name+" module: init router failed")
 					}
 				}
 
 				if err := zerror.TryCatch(func() error { return mod.Done(app.DI) }); err != nil {
-					return zerror.With(err, name+" failed to Done")
+					return zerror.With(err, name+" module: failed to Done")
 				}
 
 				// app.printLog("Module Success", logname)

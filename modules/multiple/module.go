@@ -53,7 +53,6 @@ func (m *Module) Load(zdi.Invoker) (any, error) {
 
 	var err error
 	modules.ForEach(func(name string, mod service.Module) bool {
-
 		if err = service.Utils.LoadModule(m.DI.(zdi.Injector), name, mod); err != nil {
 			return false
 		}

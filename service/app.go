@@ -32,6 +32,8 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 	log := zlog.New(LogPrefix)
 	log.ResetFlags(zlog.BitLevel | zlog.BitTime)
 
+	zlog.SetDefault(log)
+
 	return func(conf *Conf, di zdi.Injector) *App {
 		Global = &App{
 			DI:   di,
@@ -39,7 +41,6 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 			Log:  setLog(log, conf),
 		}
 		_ = di.Maps(di, conf, Global)
-		zlog.SetDefault(log)
 
 		return Global
 	}
