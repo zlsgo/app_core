@@ -76,11 +76,9 @@ func (m *Module) Start(zdi.Invoker) (err error) {
 
 func (m *Module) Done(zdi.Invoker) (err error) {
 	modules.ForEach(func(_ string, mod service.Module) bool {
-		if e := mod.Done(m.DI); err != nil {
-			if e != nil {
-				err = zerror.With(e, mod.Name()+" done error")
-				return false
-			}
+		if e := mod.Done(m.DI); e != nil {
+			err = zerror.With(e, mod.Name()+" done error")
+			return false
 		}
 		return true
 	})
