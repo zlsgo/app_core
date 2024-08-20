@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/sohaha/zlsgo/zerror"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zstring"
 	"github.com/sohaha/zlsgo/ztime"
@@ -27,9 +28,15 @@ func InitTask(tasks *[]Task, app *App) (err error) {
 			continue
 		}
 		_, err = t.Add(task.Cron, func() {
-			task.Run()
+			err := zerror.TryCatch(func() (err error) {
+				task.Run()
+				return nil
+			})
+			if err != nil {
+				zlog.Error("Task["+task.Name+"]", err)
+				return
+			}
 		})
-
 		if err != nil {
 			return
 		}
