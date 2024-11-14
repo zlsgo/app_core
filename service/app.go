@@ -76,6 +76,8 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 		log.SetLogLevel(zlog.LogSuccess)
 	}
 
+	zlog.SetDefault(log)
+
 	return log
 }
 

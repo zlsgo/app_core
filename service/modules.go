@@ -119,6 +119,10 @@ func InitModule(modules []Module, app *App) (err error) {
 			mod := modules[i]
 			vof := zreflect.ValueOf(mod)
 			name := getModuleName(mod, vof)
+			if _, ok := modulesMap[name]; ok {
+				zlog.Warnf("Module %s is already registered. If you need to register multiple identical modules, please use multiple.New(...)", name)
+				continue
+			}
 			modulesMap[name] = module{
 				vof:   vof,
 				index: i,
