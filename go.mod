@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/sohaha/zlsgo v1.7.14-0.20240618115254-3a7e159d54b5
+	github.com/sohaha/zlsgo v1.7.17
 	github.com/zlsgo/conf v0.0.0-20240505115821-18843a4ffaea
 )
 
