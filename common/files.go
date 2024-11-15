@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -60,18 +59,17 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		uploadDir = zfile.RealPathMkdir(Define.UploadLocalDir+subDirName, true)
 	}
 
-	invalidInput := zerror.WrapTag(zerror.InvalidInput)
 	uploads := make([]UploadResult, 0, len(files))
 	buf := bytes.NewBuffer(nil)
 
 	for _, v := range files {
 		f, err := v.Open()
 		if err != nil {
-			return nil, invalidInput(zerror.With(err, "文件读取失败"))
+			return nil, zerror.InvalidInput.Wrap(err, "文件读取失败")
 		}
 
 		if _, err := io.Copy(buf, f); err != nil {
-			return nil, invalidInput(zerror.With(err, "文件读取失败"))
+			return nil, zerror.InvalidInput.Wrap(err, "文件读取失败")
 		}
 
 		_ = f.Close()
@@ -79,13 +77,13 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		b := buf.Bytes()
 
 		if len(b) > int(o.MaxSize) {
-			return nil, invalidInput(errors.New("文件大小超过限制"))
+			return nil, zerror.InvalidInput.Text("文件大小超过限制")
 		}
 
 		mt := zfile.GetMimeType(v.Filename, b)
 		n := strings.Split(mt, "/")
 		if len(n) < 2 {
-			return nil, invalidInput(errors.New("文件类型无法识别"))
+			return nil, zerror.InvalidInput.Text("文件类型无法识别")
 		}
 
 		mt = strings.SplitN(mt, ";", 2)[0]
@@ -100,7 +98,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 			}
 
 			if !ok {
-				return nil, invalidInput(errors.New("不支持的文件类型"))
+				return nil, zerror.InvalidInput.Text("不支持的文件类型")
 			}
 		}
 
@@ -125,7 +123,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 
 		if o.CustomFilter != nil {
 			if err = o.CustomFilter(&r); err != nil {
-				return nil, invalidInput(err)
+				return nil, zerror.InvalidInput.Text(err.Error())
 			}
 		}
 
@@ -136,7 +134,7 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 	for i := range uploads {
 		if o.CustomProcessing != nil {
 			if err = o.CustomProcessing(&uploads[i], uploadDir); err != nil {
-				return nil, invalidInput(err)
+				return nil, zerror.InvalidInput.Text(err.Error())
 			}
 		} else {
 			err = zfile.WriteFile(uploadDir+uploads[i].Path, uploads[i].Body)
