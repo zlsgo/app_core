@@ -23,6 +23,9 @@ type BaseConf struct {
 	// LogFile log file name
 	LogFile string `z:"log_file,omitempty"`
 
+	// LogShowDate specifies if log date should be included in logs.
+	LogShowDate bool `z:"log_show_date,omitempty"`
+
 	// Port specifies the port number for the server.
 	Port string `z:"port,omitempty"`
 

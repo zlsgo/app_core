@@ -52,9 +52,15 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 
 // setLog initializes the logger with the given configuration.
 func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
+	logFlags := log.GetFlags()
 	if c.Base.LogPosition {
-		log.ResetFlags(log.GetFlags() | zlog.BitLongFile)
+		logFlags |= zlog.BitLongFile
 	}
+
+	if baseConf.LogShowDate {
+		logFlags |= zlog.BitDate
+	}
+	log.ResetFlags(logFlags)
 
 	var logfile string
 	if c.Base.LogDir != "" {
