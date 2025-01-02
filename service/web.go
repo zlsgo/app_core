@@ -60,7 +60,16 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 		r.AllowQuerySemicolons = true
 		r.BindStructSuffix = ""
 		r.BindStructDelimiter = "-"
-		r.SetAddr(app.Conf.Base.Port)
+
+		if app.Conf.Base.CertFile != "" && app.Conf.Base.KeyFile != "" {
+			r.SetAddr(app.Conf.Base.Port, znet.TlsCfg{
+				Cert:     app.Conf.Base.CertFile,
+				Key:      app.Conf.Base.KeyFile,
+				HTTPAddr: app.Conf.Base.HTTPAddr,
+			})
+		} else {
+			r.SetAddr(app.Conf.Base.Port)
+		}
 
 		isDebug := app.Conf.Base.Debug
 		if isDebug {

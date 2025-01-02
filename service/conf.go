@@ -29,6 +29,15 @@ type BaseConf struct {
 	// Port specifies the port number for the server.
 	Port string `z:"port,omitempty"`
 
+	// CertFile CertFile
+	CertFile string `z:"cert_file,omitempty"`
+
+	// KeyFile KeyFile
+	KeyFile string `z:"key_file,omitempty"`
+
+	// HTTPAddr HTTPAddr
+	HTTPAddr string `z:"http_addr,omitempty"`
+
 	// PprofToken is a token for accessing pprof endpoints.
 	PprofToken string `z:"pprof_token,omitempty"`
 

@@ -1554,10 +1554,8 @@ github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPx
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/sohaha/zlsgo v1.7.12/go.mod h1:7LViqB5ll09RnlU5V5AW0oBnqFg260/q+B/SGDNNdmQ=
-github.com/sohaha/zlsgo v1.7.14-0.20240618115254-3a7e159d54b5 h1:rxPIAasEmbMSwxghfGUiLmB2S0DayFmjpGdpUm4AxWA=
-github.com/sohaha/zlsgo v1.7.14-0.20240618115254-3a7e159d54b5/go.mod h1:7LViqB5ll09RnlU5V5AW0oBnqFg260/q+B/SGDNNdmQ=
-github.com/sohaha/zlsgo v1.7.17 h1:mr/H2JdIluEJ+/wkKBixS1xpyNNWvkuf5VhdVnVcxvE=
-github.com/sohaha/zlsgo v1.7.17/go.mod h1:7LViqB5ll09RnlU5V5AW0oBnqFg260/q+B/SGDNNdmQ=
+github.com/sohaha/zlsgo v1.7.18-0.20241225103009-7dfd3d17ef4c h1:D7vcX343dThG8nw9MAv5vjSDpBibb4oy/qD+b8WoiTE=
+github.com/sohaha/zlsgo v1.7.18-0.20241225103009-7dfd3d17ef4c/go.mod h1:7LViqB5ll09RnlU5V5AW0oBnqFg260/q+B/SGDNNdmQ=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
 github.com/sourcegraph/conc v0.3.0/go.mod h1:Sdozi7LEKbFPqYX2/J+iBAM6HpqSLTASQIKqDmF7Mt0=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
