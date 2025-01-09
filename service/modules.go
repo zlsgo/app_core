@@ -133,7 +133,9 @@ func InitModule(modules []Module, app *App) (err error) {
 		moduleKeys := zarray.Keys(modulesMap)
 		sort.Strings(moduleKeys)
 
-		app.printLog("Module", "["+strings.Join(moduleKeys, ", ")+"]")
+		if len(moduleKeys) > 0 {
+			app.printLog("Module", "["+strings.Join(moduleKeys, ", ")+"]")
+		}
 		for v := range moduleKeys {
 			name := moduleKeys[v]
 			mod, vof := modulesMap[name].mod, modulesMap[name].vof
@@ -217,8 +219,17 @@ func InitModule(modules []Module, app *App) (err error) {
 			})
 		}
 
+		fixTask(app)
+
 		return nil
 	})
+}
+
+func fixTask(app *App) {
+	var tasks *[]Task
+	if err := app.DI.Resolve(&tasks); err != nil {
+		app.DI.(zdi.Injector).Map(&[]Task{})
+	}
 }
 
 func getModuleName(m Module, val reflect.Value) string {
