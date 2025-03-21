@@ -2,6 +2,7 @@ package service
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zfile"
@@ -80,6 +81,17 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 		log.SetLogLevel(zlog.LogDump)
 	} else {
 		log.SetLogLevel(zlog.LogSuccess)
+	}
+
+	if c.Base.LogLevel != "" {
+		switch strings.ToLower(c.Base.LogLevel) {
+		case "debug":
+			log.SetLogLevel(zlog.LogDump)
+		case "info":
+			log.SetLogLevel(zlog.LogSuccess)
+		case "warn":
+			log.SetLogLevel(zlog.LogWarn)
+		}
 	}
 
 	zlog.SetDefault(log)

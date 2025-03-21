@@ -23,6 +23,9 @@ type BaseConf struct {
 	// LogFile log file name
 	LogFile string `z:"log_file,omitempty"`
 
+	// LogLevel log level
+	LogLevel string `z:"log_level,omitempty"`
+
 	// LogShowDate specifies if log date should be included in logs.
 	LogShowDate bool `z:"log_show_date,omitempty"`
 
