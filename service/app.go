@@ -46,7 +46,6 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 			Log:  setLog(log, conf),
 		}
 		_ = di.Maps(di, conf, Global)
-
 		return Global
 	}
 }
@@ -105,5 +104,5 @@ func (app *App) printLog(tip string, v ...interface{}) {
 		app.Log.ColorTextWrap(zlog.ColorLightMagenta, zstring.Pad(tip, 6, " ", zstring.PadLeft)),
 	}
 	d = append(d, v...)
-	zlog.Debug(d...)
+	app.Log.Debug(d...)
 }
