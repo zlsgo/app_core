@@ -33,6 +33,10 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 	log := zlog.New(LogPrefix)
 	log.ResetFlags(zlog.BitLevel | zlog.BitTime)
 
+	if baseConf.DisableDebug {
+		log.Discard()
+	}
+
 	if !baseConf.Debug {
 		log.SetLogLevel(zlog.LogSuccess)
 	}
