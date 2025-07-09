@@ -61,6 +61,9 @@ type BaseConf struct {
 
 	// DisableDebug specifies if debug mode is disabled.
 	DisableDebug bool `z:"-"`
+
+	// LogMaxAge log max age
+	LogMaxAge int `z:"log_max_age,omitempty"`
 }
 
 func init() {

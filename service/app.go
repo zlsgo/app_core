@@ -97,6 +97,10 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 		}
 	}
 
+	if c.Base.LogMaxAge != 0 {
+		zlog.LogMaxDurationDate = c.Base.LogMaxAge
+	}
+
 	zlog.SetDefault(log)
 
 	return log
