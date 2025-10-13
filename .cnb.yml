@@ -1,5 +1,5 @@
 include:
-  - https://cnb.cool/zls-tools/vm/-/blob/main/go-1.24/ide.yml
+  - https://cnb.cool/zls-tools/vm/-/blob/main/ide.yml
   - https://cnb.cool/zls-tools/vm/-/blob/main/tools/sync-github-zlsgo.yml
 
 $:

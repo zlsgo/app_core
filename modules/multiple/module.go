@@ -63,11 +63,9 @@ func (m *Module) Load(zdi.Invoker) (any, error) {
 
 func (m *Module) Start(zdi.Invoker) (err error) {
 	modules.ForEach(func(_ string, mod service.Module) bool {
-		if e := mod.Start(m.DI); err != nil {
-			if e != nil {
-				err = zerror.With(e, mod.Name()+" start error")
-				return false
-			}
+		if e := mod.Start(m.DI); e != nil {
+			err = zerror.With(e, mod.Name()+" start error")
+			return false
 		}
 		return true
 	})
