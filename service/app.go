@@ -23,7 +23,7 @@ var (
 )
 
 // NewApp creates a new App with the provided options.
-func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) *App {
+func NewApp(opt ...func(o BaseConf) BaseConf) func(di zdi.Injector) *App {
 	for i := range opt {
 		baseConf = opt[i](baseConf)
 	}
@@ -43,7 +43,18 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(conf *Conf, di zdi.Injector) 
 
 	zlog.SetDefault(log)
 
-	return func(conf *Conf, di zdi.Injector) *App {
+	return func(di zdi.Injector) *App {
+		if di == nil {
+			di = zdi.New()
+		}
+		var conf *Conf
+		err := di.Resolve(&conf)
+		if err != nil {
+			if !strings.Contains(err.Error(), "*service.Conf") {
+				panic(err)
+			}
+			conf = NewConf()(di)
+		}
 		Global = &App{
 			DI:   di,
 			Conf: conf,

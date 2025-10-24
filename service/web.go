@@ -101,7 +101,11 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 }
 
 // RunWeb runs the web application
-func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Module) {
+func RunWeb(app *App) {
+	var ps []Module
+
+	r, controllers := getWeb(app)
+
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
 		after(r, app)
 	})
@@ -125,6 +129,30 @@ func RunWeb(r *Web, app *App, controllers *[]Controller, ps []Module) {
 			_, _ = app.DI.Invoke(stop.Interface())
 		}
 	}
+}
+
+func getWeb(app *App) (web *Web, controllers *[]Controller) {
+	if err := app.DI.Resolve(&web); err != nil {
+		if !strings.Contains(err.Error(), "*service.Web") {
+			panic(err)
+		}
+
+		var ps []Module
+		_ = app.DI.Resolve(&ps)
+
+		var m []znet.Handler
+		_ = app.DI.Resolve(&m)
+
+		var r *znet.Engine
+		web, r = NewWeb()(app, m, ps)
+		_ = app.DI.(zdi.Injector).Maps(web, r)
+	}
+
+	if err := app.DI.Resolve(&controllers); err != nil {
+		controllers = &[]Controller{}
+		_ = app.DI.(zdi.Injector).Map(controllers)
+	}
+	return
 }
 
 // initRouter initializes the router for the application

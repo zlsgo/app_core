@@ -96,13 +96,18 @@ func InitModule(modules []Module, app *App) (err error) {
 		_ = app.DI.(zdi.TypeMapper).Map(mod)
 	}
 
+	if _, err := app.DI.Invoke(func([]Module) {}); err != nil {
+		app.DI.(zdi.TypeMapper).Map(modules)
+	}
+
 	return app.DI.InvokeWithErrorOnly(func() error {
 		var (
-			tasks      *[]Task
-			controller *[]Controller
-			web        *Web
+			tasks *[]Task
 		)
-		_ = app.DI.Resolve(&tasks, &controller, &web)
+
+		_ = app.DI.Resolve(&tasks)
+
+		web, _ := getWeb(app)
 
 		moduleTotal := len(modules)
 		runs := make([]func() error, 0, moduleTotal)
