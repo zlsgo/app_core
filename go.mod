@@ -1,10 +1,10 @@
 module github.com/zlsgo/app_core
 
-go 1.18
+go 1.23.0
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/sohaha/zlsgo v1.7.19-0.20251009112837-8dd44218096b
+	github.com/sohaha/zlsgo v1.7.20
 	github.com/zlsgo/conf v0.0.0-20250421042600-ef858c116f8e
 )
 
@@ -31,3 +31,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/zlsgo/conf => ../conf

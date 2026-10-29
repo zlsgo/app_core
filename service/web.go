@@ -52,8 +52,8 @@ func (w *Web) GetHijack() []func(c *znet.Context) bool {
 }
 
 // NewWeb returns a function that creates a new Web instance along with a znet.Engine instance
-func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web, *znet.Engine) {
-	return func(app *App, middlewares []znet.Handler, ps []Module) (*Web, *znet.Engine) {
+func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) *Web {
+	return func(app *App, middlewares []znet.Handler, ps []Module) *Web {
 		r := znet.New()
 		r.Log = app.Log
 		znet.Log = app.Log
@@ -96,14 +96,12 @@ func NewWeb() func(app *App, middlewares []znet.Handler, plugin []Module) (*Web,
 
 		return &Web{
 			Engine: r,
-		}, r
+		}
 	}
 }
 
 // RunWeb runs the web application
 func RunWeb(app *App) {
-	var ps []Module
-
 	r, controllers := getWeb(app)
 
 	_, err := app.DI.Invoke(func(after RouterBeforeProcess) {
@@ -122,11 +120,14 @@ func RunWeb(app *App) {
 		znet.Run()
 	}
 
-	for _, p := range ps {
-		of := zreflect.ValueOf(p)
-		stop := of.MethodByName("Stop")
-		if stop.IsValid() {
-			_, _ = app.DI.Invoke(stop.Interface())
+	var ps []Module
+	if err := app.DI.Resolve(&ps); err == nil {
+		for _, p := range ps {
+			of := zreflect.ValueOf(p)
+			stop := of.MethodByName("Stop")
+			if stop.IsValid() {
+				_, _ = app.DI.Invoke(stop.Interface())
+			}
 		}
 	}
 }
@@ -143,9 +144,8 @@ func getWeb(app *App) (web *Web, controllers *[]Controller) {
 		var m []znet.Handler
 		_ = app.DI.Resolve(&m)
 
-		var r *znet.Engine
-		web, r = NewWeb()(app, m, ps)
-		_ = app.DI.(zdi.Injector).Maps(web, r)
+		web = NewWeb()(app, m, ps)
+		_ = app.DI.(zdi.Injector).Maps(web, web.Engine)
 	}
 
 	if err := app.DI.Resolve(&controllers); err != nil {
