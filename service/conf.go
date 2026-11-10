@@ -64,6 +64,9 @@ type BaseConf struct {
 
 	// LogMaxAge log max age
 	LogMaxAge int `z:"log_max_age,omitempty"`
+
+	// AutomaticEnv automatically loads environment variables
+	AutomaticEnv bool `z:"automatic_env,omitempty"`
 }
 
 func init() {
@@ -220,6 +223,12 @@ func NewConf(opt ...func(o gconf.Options) gconf.Options) func(di zdi.Injector) *
 type DefaultConfValue interface {
 	ConfKey() string
 	DisableWrite() bool
+
+	// Preset sets the default values for the configuration. Non-compulsory.
+	// Preset()
+
+	// Reload is called when the configuration is reloaded. Non-compulsory.
+	// Reload()
 }
 
 // RegisterDefaultConf registers a default configuration value.
@@ -263,8 +272,8 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 		}
 	}
 
-	for i := range value {
-		i := i
+	for k := range value {
+		i := k
 		v := reflect.ValueOf(value[i])
 		isPtr := v.Kind() == reflect.Ptr
 		name, _ := getConfName(v)
@@ -283,6 +292,11 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 			conf.reloads = append(conf.reloads, r.Interface())
 		}
 
+		p := v.MethodByName("Preset")
+		if p.IsValid() && p.Kind() == reflect.Func && p.Type() == reflect.TypeOf(func() {}) {
+			p.Call(nil)
+		}
+
 		set := setConf(disableWrite)
 		typ := reflect.Indirect(v).Type()
 
@@ -291,8 +305,10 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 			m := ztype.ToMap(value[i])
 			if name == "base" {
 				disableDebug = m.Get("DisableDebug").Bool()
+				set(name, map[string]interface{}(m))
+			} else {
+				set(name, m)
 			}
-			set(name, m)
 		case reflect.Slice:
 			switch typ.Elem().Kind() {
 			case reflect.Struct:

@@ -8,6 +8,7 @@ import (
 	"github.com/sohaha/zlsgo/zfile"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/zstring"
+	gconf "github.com/zlsgo/conf"
 )
 
 // App represents an application.
@@ -53,7 +54,10 @@ func NewApp(opt ...func(o BaseConf) BaseConf) func(di zdi.Injector) *App {
 			if !strings.Contains(err.Error(), "*service.Conf") {
 				panic(err)
 			}
-			conf = NewConf()(di)
+			conf = NewConf(func(o gconf.Options) gconf.Options {
+				o.AutomaticEnv = baseConf.AutomaticEnv
+				return o
+			})(di)
 		}
 		Global = &App{
 			DI:   di,

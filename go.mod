@@ -1,10 +1,10 @@
 module github.com/zlsgo/app_core
 
-go 1.23.0
+go 1.25.0
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/sohaha/zlsgo v1.7.20
+	github.com/sohaha/zlsgo v1.7.22
 	github.com/zlsgo/conf v0.0.0-20250421042600-ef858c116f8e
 )
 
@@ -23,10 +23,11 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
