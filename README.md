@@ -83,7 +83,7 @@ func (h *Index) GET(c *znet.Context) string {
 go build -o tmpApp && ./tmpApp
 ```
 
-配置文件默认名为 `<可执行文件名>.toml`，放在程序运行目录（即启动时的当前工作目录，不是可执行文件所在目录），可手动创建；`<名称>-dev.toml` 会覆盖主配置文件，适合作为本地开发配置。示例：
+配置文件默认名为 `<可执行文件名>.toml`，路径以 zlsgo 的 `zfile.ProjectPath` 为基准：通常是可执行文件所在目录；当可执行文件位于临时目录（例如 `go run`）时回退到启动时的当前工作目录。可手动创建；`<名称>-dev.toml` 会覆盖主配置文件，适合作为本地开发配置。示例：
 
 ```toml
 [base]
@@ -196,7 +196,7 @@ m, ok := bundle.Get("user")  // 按名字取回
 _, _ = m, ok
 ```
 
-`multiple.New` 使用包级存储，同一进程只应初始化一次；同名模块请用不同 key 包装，避免被去重。
+`multiple.New` 使用包级存储，同一进程只应初始化一次；同名模块请用不同 key 包装，避免被去重。子模块按注册 key 的字典序执行 `Load` → `Start` → `Done`，`Tasks`、`Controller` 和 `Name` 也按该顺序汇总，便于复现启动顺序。
 
 ### 4. 直接实现 service.Module
 
@@ -219,10 +219,25 @@ func (c *Custom) Done(di zdi.Invoker) error         { return nil }
 
 ## 其他入口
 
-- 全局对象：`app_core.Conf()`、`app_core.Log()`、`app_core.DI()` 返回 `error`；`MustConf()` 等旧接口会 panic，已不推荐。
+- 全局对象：`app_core.Conf()`、`app_core.Log()`、`app_core.DI()` 返回 `error`，未初始化或对应字段为空时返回 `app_core.ErrNotInitialized`；`MustConf()` 等旧接口会 panic，已不推荐。
 - 控制器：实现 `Init(*znet.Engine) error`，`Path` 字段指定路由前缀，也可在 `Init` 内用 `r.GET` 手动注册路由。
 - 定时任务：`service.Task{Name, Cron, Run}`，Cron 表达式见 [zlsgo](https://github.com/sohaha/zlsgo)。
 - 公共工具：`common.VarPages`、`common.VarUID`、`common.Upload`、`common.Fatal`。
+
+### 文件上传
+
+`common.Upload(c, subDirName, opts...)` 把表单文件保存到 `common.Define.UploadLocalDir`（默认 `./static`，同样相对 `zfile.ProjectPath`）：
+
+```go
+files, err := common.Upload(c, "avatar", func(o *common.UploadOption) {
+	o.Key = "file"                     // 表单字段名，默认 file
+	o.Dir = "users"                    // 追加到 subDirName 之后；以 "/" 开头时忽略 subDirName
+	o.MimeType = []string{"image/png"} // 允许的 MIME，留空不限制
+	o.MaxSize = 2 * 1024 * 1024        // 单文件大小上限，默认 2MiB
+})
+```
+
+`subDirName` 和 `Dir` 按相对目录处理：开头的分隔符会被忽略，包含 `..` 的值直接返回错误，避免把文件写到上传根目录之外。使用编译后的二进制时，返回的 `Path` 形如 `/static/xxx`，可直接作为静态资源路径；`go run` 等可执行文件位于临时目录的场景会返回绝对路径。
 
 ## 相关项目
 

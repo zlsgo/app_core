@@ -23,6 +23,7 @@ func InitTask(tasks *[]Task, app *App) (err error) {
 	t := cron.New()
 
 	app.Log.Debug(app.Log.ColorTextWrap(zlog.ColorLightBlue, zstring.Pad("Cron", 6, " ", zstring.PadLeft)), "Register ")
+	registered := 0
 	for i := range *tasks {
 		task := &(*tasks)[i]
 		if task.Cron == "" || task.Run == nil {
@@ -39,11 +40,16 @@ func InitTask(tasks *[]Task, app *App) (err error) {
 			}
 		})
 		if err != nil {
-			return
+			return zerror.With(err, "task "+task.Name+": failed to register")
 		}
+		registered++
 
 		next, _ := cron.ParseNextTime(task.Cron)
 		app.printLog("", app.Log.ColorTextWrap(zlog.ColorLightGreen, task.Name)+app.Log.ColorTextWrap(zlog.ColorLightWhite, " ["+task.Cron+"]("+ztime.FormatTime(next)+")"))
+	}
+
+	if registered == 0 {
+		return nil
 	}
 
 	t.Run()

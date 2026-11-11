@@ -31,6 +31,40 @@ type UploadResult struct {
 	Body     []byte `json:"-"`
 }
 
+// uploadRelDir builds the directory path, relative to the upload root, where
+// files are written. subDirName and dir are treated as relative names: leading
+// separators are ignored and "." segments are dropped. ".." segments are
+// rejected so a value taken from a request can never escape the upload root.
+// A dir that starts with "/" is resolved from the upload root and ignores
+// subDirName, which keeps the historical behaviour of that option.
+func uploadRelDir(subDirName, dir string) (string, error) {
+	rel := strings.ReplaceAll(subDirName, "::", "__")
+	if dir != "" {
+		if strings.HasPrefix(dir, "/") {
+			rel = dir
+		} else {
+			rel += "/" + dir
+		}
+	}
+
+	segments := strings.Split(strings.ReplaceAll(rel, "\\", "/"), "/")
+	cleaned := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		switch segment {
+		case "", ".":
+			continue
+		case "..":
+			return "", zerror.InvalidInput.Text("上传目录不合法")
+		}
+		if strings.ContainsRune(segment, 0) {
+			return "", zerror.InvalidInput.Text("上传目录不合法")
+		}
+		cleaned = append(cleaned, segment)
+	}
+
+	return strings.Join(cleaned, "/"), nil
+}
+
 func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([]UploadResult, error) {
 	o := UploadOption{
 		Key:     "file",
@@ -44,20 +78,11 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		return nil, zerror.InvalidInput.Wrap(err, "上传失败")
 	}
 
-	if subDirName != "" {
-		subDirName = strings.Replace(subDirName, "::", "__", -1)
-		subDirName = strings.Trim(subDirName, "/")
-		subDirName = "/" + subDirName
+	relDir, err := uploadRelDir(subDirName, o.Dir)
+	if err != nil {
+		return nil, err
 	}
-	uploadDir := ""
-	if o.Dir != "" {
-		uploadDir = zfile.RealPathMkdir(Define.UploadLocalDir+o.Dir, true)
-		if !strings.HasPrefix(o.Dir, "/") {
-			uploadDir = zfile.RealPathMkdir(Define.UploadLocalDir+subDirName+"/"+o.Dir, true)
-		}
-	} else {
-		uploadDir = zfile.RealPathMkdir(Define.UploadLocalDir+subDirName, true)
-	}
+	uploadDir := zfile.RealPathMkdir(filepath.Join(Define.UploadLocalDir, relDir), true)
 
 	uploads := make([]UploadResult, 0, len(files))
 

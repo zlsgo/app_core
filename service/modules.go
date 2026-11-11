@@ -30,6 +30,21 @@ type ModuleService struct {
 	Tasks       []Task
 }
 
+// IsNilModule reports whether mod is nil or a typed nil pointer implementing
+// Module. Such entries are skipped during initialization and shutdown instead
+// of panicking, which makes optional modules built as `var m *Feature` safe.
+func IsNilModule(mod Module) bool {
+	if mod == nil {
+		return true
+	}
+	value := zreflect.ValueOf(mod)
+	switch value.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		return value.IsNil()
+	}
+	return false
+}
+
 type ModuleLifeCycle struct {
 	OnLoad  func(zdi.Invoker) (any, error)
 	OnStart func(zdi.Invoker) error
@@ -86,6 +101,16 @@ func (p *ModuleLifeCycle) Stop(di zdi.Invoker) error {
 
 // InitModule initializes the module with the given list of plugins and a dependency injector.
 func InitModule(modules []Module, app *App) (err error) {
+	initialized := make([]Module, 0, len(modules))
+	for _, mod := range modules {
+		if IsNilModule(mod) {
+			zlog.Warn("Ignoring nil module")
+			continue
+		}
+		initialized = append(initialized, mod)
+	}
+	modules = initialized
+
 	for _, mod := range modules {
 		value := zreflect.ValueOf(mod)
 		assignApp(value, app)

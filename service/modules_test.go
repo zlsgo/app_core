@@ -73,3 +73,33 @@ func TestInitModuleWrapsLoadError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestInitModuleSkipsNilModules(t *testing.T) {
+	di := zdi.New()
+	calls := make([]string, 0, 3)
+	good := &lifecycleProbe{name: "good", calls: &calls}
+	var typedNil *lifecycleProbe
+	app := &App{DI: di, Conf: &Conf{}, Log: zlog.New("")}
+
+	if err := InitModule([]Module{nil, typedNil, good}, app); err != nil {
+		t.Fatalf("InitModule: %v", err)
+	}
+
+	want := []string{"good:load", "good:start", "good:done"}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("calls = %v, want %v", calls, want)
+	}
+}
+
+func TestIsNilModule(t *testing.T) {
+	var typedNil *lifecycleProbe
+	if !IsNilModule(nil) {
+		t.Fatal("nil module should be reported as nil")
+	}
+	if !IsNilModule(typedNil) {
+		t.Fatal("typed nil module should be reported as nil")
+	}
+	if IsNilModule(&lifecycleProbe{}) {
+		t.Fatal("non-nil module should not be reported as nil")
+	}
+}

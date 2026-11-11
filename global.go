@@ -25,6 +25,9 @@ func DI() (zdi.Invoker, error) {
 	if err := ensureInitialized(); err != nil {
 		return nil, err
 	}
+	if service.Global.DI == nil {
+		return nil, ErrNotInitialized
+	}
 	return service.Global.DI, nil
 }
 
@@ -43,6 +46,9 @@ func Conf() (*service.Conf, error) {
 	if err := ensureInitialized(); err != nil {
 		return nil, err
 	}
+	if service.Global.Conf == nil {
+		return nil, ErrNotInitialized
+	}
 	return service.Global.Conf, nil
 }
 
@@ -60,6 +66,9 @@ func MustConf() *service.Conf {
 func Log() (*zlog.Logger, error) {
 	if err := ensureInitialized(); err != nil {
 		return nil, err
+	}
+	if service.Global.Log == nil {
+		return nil, ErrNotInitialized
 	}
 	return service.Global.Log, nil
 }

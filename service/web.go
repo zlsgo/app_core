@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -123,6 +124,9 @@ func RunWeb(app *App) {
 	var ps []Module
 	if err := app.DI.Resolve(&ps); err == nil {
 		for _, p := range ps {
+			if IsNilModule(p) {
+				continue
+			}
 			of := zreflect.ValueOf(p)
 			stop := of.MethodByName("Stop")
 			if stop.IsValid() {
@@ -159,34 +163,47 @@ func getWeb(app *App) (web *Web, controllers *[]Controller) {
 func initRouter(app *App, _ *Web, controllers []Controller) (err error) {
 	err = app.DI.InvokeWithErrorOnly(func(r *Web) error {
 		for i := range controllers {
-			c := controllers[i]
-			valueOf := zreflect.ValueOf(c)
-			typeOf := zreflect.TypeOf(c).Elem()
-			value := reflect.Indirect(valueOf)
-			controller := strings.TrimPrefix(typeOf.String(), "controller.")
-			controller = strings.Replace(controller, ".", "/", -1)
-			err = dynamicAssign(valueOf, app)
-			if err != nil {
-				return zerror.With(err, controller+" router assign error")
-			}
-
-			err = zerror.TryCatch(func() (err error) {
-				name := getWebRouterName(value, controller)
-				if name == "" {
-					err = r.BindStruct(name, c)
-				} else {
-					err = r.Group("/").BindStruct(name, c)
-				}
-				return
-			})
-			if err != nil {
-				return zerror.With(err, controller+" router bind error")
+			if err := bindController(app, r, controllers[i]); err != nil {
+				return err
 			}
 		}
 		return nil
 	})
 
 	return
+}
+
+// bindController validates a single controller and registers its routes.
+// Nil or non-pointer controllers are reported as errors instead of panicking,
+// so a misconfigured controller list cannot crash the process on startup.
+func bindController(app *App, r *Web, c Controller) (err error) {
+	valueOf := zreflect.ValueOf(c)
+	if !valueOf.IsValid() || valueOf.Kind() != reflect.Ptr || valueOf.IsNil() {
+		return fmt.Errorf("controller must be a non-nil pointer, got %T", c)
+	}
+
+	typeOf := valueOf.Type().Elem()
+	value := valueOf.Elem()
+	controller := strings.TrimPrefix(typeOf.String(), "controller.")
+	controller = strings.Replace(controller, ".", "/", -1)
+
+	if err = dynamicAssign(valueOf, app); err != nil {
+		return zerror.With(err, controller+" router assign error")
+	}
+
+	err = zerror.TryCatch(func() (err error) {
+		name := getWebRouterName(value, controller)
+		if name == "" {
+			err = r.BindStruct(name, c)
+		} else {
+			err = r.Group("/").BindStruct(name, c)
+		}
+		return
+	})
+	if err != nil {
+		return zerror.With(err, controller+" router bind error")
+	}
+	return nil
 }
 
 func getWebRouterName(value reflect.Value, controller string) string {
