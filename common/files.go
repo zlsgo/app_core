@@ -60,23 +60,29 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 	}
 
 	uploads := make([]UploadResult, 0, len(files))
-	buf := bytes.NewBuffer(nil)
 
 	for _, v := range files {
+		if v.Size > o.MaxSize {
+			return nil, zerror.InvalidInput.Text("文件大小超过限制")
+		}
+
 		f, err := v.Open()
 		if err != nil {
 			return nil, zerror.InvalidInput.Wrap(err, "文件读取失败")
 		}
 
-		if _, err := io.Copy(buf, f); err != nil {
-			return nil, zerror.InvalidInput.Wrap(err, "文件读取失败")
-		}
-
+		// Each file needs its own buffer: reusing one and calling Reset would
+		// let the next file overwrite the previously collected Body slices.
+		var buf bytes.Buffer
+		_, copyErr := io.Copy(&buf, io.LimitReader(f, o.MaxSize+1))
 		_ = f.Close()
+		if copyErr != nil {
+			return nil, zerror.InvalidInput.Wrap(copyErr, "文件读取失败")
+		}
 
 		b := buf.Bytes()
 
-		if len(b) > int(o.MaxSize) {
+		if int64(len(b)) > o.MaxSize {
 			return nil, zerror.InvalidInput.Text("文件大小超过限制")
 		}
 
@@ -128,7 +134,6 @@ func Upload(c *znet.Context, subDirName string, opt ...func(o *UploadOption)) ([
 		}
 
 		uploads = append(uploads, r)
-		buf.Reset()
 	}
 
 	for i := range uploads {

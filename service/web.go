@@ -193,9 +193,9 @@ func getWebRouterName(value reflect.Value, controller string) string {
 	name := ""
 	cName := value.FieldByName("Path")
 	if cName.IsValid() && cName.String() != "" {
-		name = zstring.CamelCaseToSnakeCase(cName.String(), "/")
+		name = snakeRoutePath(cName.String())
 	} else {
-		name = zstring.CamelCaseToSnakeCase(controller, "/")
+		name = snakeRoutePath(controller)
 	}
 
 	lname := strings.Split(name, "/")
@@ -204,4 +204,15 @@ func getWebRouterName(value reflect.Value, controller string) string {
 		name = strings.TrimSuffix(name, "/")
 	}
 	return name
+}
+
+// snakeRoutePath converts each path segment to snake case without injecting a
+// second separator at segment boundaries (CamelCaseToSnakeCase treats "/" as a
+// regular character).
+func snakeRoutePath(path string) string {
+	parts := strings.Split(path, "/")
+	for i := range parts {
+		parts[i] = zstring.CamelCaseToSnakeCase(parts[i])
+	}
+	return strings.Join(parts, "/")
 }

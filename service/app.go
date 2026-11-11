@@ -76,7 +76,7 @@ func setLog(log *zlog.Logger, c *Conf) *zlog.Logger {
 		logFlags |= zlog.BitLongFile
 	}
 
-	if baseConf.LogShowDate {
+	if c.Base.LogShowDate {
 		logFlags |= zlog.BitDate
 	}
 	log.ResetFlags(logFlags)

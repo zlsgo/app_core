@@ -43,16 +43,12 @@ func (m *Module) Tasks() []service.Task {
 }
 
 func (m *Module) Load(zdi.Invoker) (any, error) {
-	modules.ForEach(func(_ string, mod service.Module) bool {
-		pdi := reflect.Indirect(reflect.ValueOf(mod)).FieldByName("DI")
-		if pdi.IsValid() {
-			pdi.Set(reflect.ValueOf(m.DI))
-		}
-		return true
-	})
-
 	var err error
 	modules.ForEach(func(name string, mod service.Module) bool {
+		if err = service.AssignApp(mod, &m.App); err != nil {
+			err = zerror.With(err, name+" assign error")
+			return false
+		}
 		if err = service.Utils.LoadModule(m.DI.(zdi.Injector), name, mod); err != nil {
 			return false
 		}

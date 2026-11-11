@@ -6,7 +6,7 @@
 
 ## 安装
 
-Go 1.23 或更高版本：
+Go 1.25 或更高版本：
 
 ```bash
 go get github.com/zlsgo/app_core
@@ -94,7 +94,7 @@ log_dir = "./logs"
 zone = 8
 ```
 
-默认端口 `3788`、时区 `8`。常用项还有 `log_file`、`log_show_date`、`log_position`、`log_max_age`、`cert_file` / `key_file` / `http_addr`（HTTPS）、`pprof` / `pprof_token`。`hot_reload`（端口变更时重启 Web）目前只认代码里通过 `NewApp` 设置的值，写进配置文件不生效。配置格式详见 [zlsgo/conf](https://github.com/zlsgo/conf)，也可调用 `Conf.Write()` 写出配置。
+默认端口 `3788`、时区 `8`。常用项还有 `log_file`、`log_show_date`、`log_position`、`log_max_age`、`cert_file` / `key_file` / `http_addr`（HTTPS）、`pprof` / `pprof_token`。`hot_reload` 控制基础配置变更时是否重启 Web，默认开启，可写在代码或配置文件中。配置格式详见 [zlsgo/conf](https://github.com/zlsgo/conf)，也可调用 `Conf.Write()` 写出配置。
 
 环境变量覆盖由 `NewConf` 的 options 开启。在 import 区加入 `gconf "github.com/zlsgo/conf"`，把快速开始里的 `di.Provide(service.NewConf())` 换成：
 

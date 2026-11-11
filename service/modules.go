@@ -161,12 +161,12 @@ func InitModule(modules []Module, app *App) (err error) {
 
 			runs = append(runs, func() error {
 				tasks := mod.Tasks()
-				if err = InitTask(&tasks, app); err != nil {
+				if err := InitTask(&tasks, app); err != nil {
 					return zerror.With(err, name+" module: timed task launch failed")
 				}
 
 				if web != nil {
-					if err = initRouter(app, web, mod.Controller()); err != nil {
+					if err := initRouter(app, web, mod.Controller()); err != nil {
 						return zerror.With(err, name+" module: init router failed")
 					}
 				}
@@ -214,8 +214,7 @@ func InitModule(modules []Module, app *App) (err error) {
 				if e.Op == fsnotify.Write {
 					app.Conf.autoUnmarshal()
 					for _, fn := range app.Conf.reloads {
-						err = app.DI.InvokeWithErrorOnly(fn)
-						if err != nil {
+						if err := app.DI.InvokeWithErrorOnly(fn); err != nil {
 							zlog.Error(err)
 						}
 					}
@@ -240,7 +239,8 @@ func fixTask(app *App) {
 func getModuleName(m Module, val reflect.Value) string {
 	name := m.Name()
 	if name == "" {
-		name = zstring.Ucfirst(strings.SplitN(val.Type().String()[1:], ".", 2)[0])
+		typ := strings.TrimPrefix(val.Type().String(), "*")
+		name = zstring.Ucfirst(strings.SplitN(typ, ".", 2)[0])
 	}
 	return name
 }

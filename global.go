@@ -2,28 +2,23 @@ package app_core
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/sohaha/zlsgo/zdi"
 	"github.com/sohaha/zlsgo/zlog"
 	"github.com/zlsgo/app_core/service"
 )
 
-var (
-	// ErrNotInitialized is returned when global service is not initialized
-	ErrNotInitialized = errors.New("service not fully initialized")
-	initOnce          sync.Once
-	initError         error
-)
+// ErrNotInitialized is returned when global service is not initialized
+var ErrNotInitialized = errors.New("service not fully initialized")
 
 // ensureInitialized checks if the global service is initialized
 func ensureInitialized() error {
-	initOnce.Do(func() {
-		if service.Global == nil {
-			initError = ErrNotInitialized
-		}
-	})
-	return initError
+	// Do not cache this result: the service may be initialized after an early
+	// call, and caching the failure would make every later access fail too.
+	if service.Global == nil {
+		return ErrNotInitialized
+	}
+	return nil
 }
 
 func DI() (zdi.Invoker, error) {

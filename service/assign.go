@@ -9,6 +9,9 @@ import (
 )
 
 func dynamicAssign(value reflect.Value, app *App) (err error) {
+	if !value.IsValid() || value.Kind() != reflect.Ptr || value.IsNil() {
+		return nil
+	}
 	assignApp(value, app)
 	err = assignDI(value, app.DI)
 	if err != nil {
@@ -20,6 +23,13 @@ func dynamicAssign(value reflect.Value, app *App) (err error) {
 	}
 	err = assignLog(value, app, "")
 	return
+}
+
+// AssignApp injects the application context (App, DI, Conf and Log) into value
+// when it has matching fields. Composite modules use it to initialize their
+// child modules before running their lifecycle callbacks.
+func AssignApp(value interface{}, app *App) error {
+	return dynamicAssign(reflect.ValueOf(value), app)
 }
 
 func assignDI(value reflect.Value, di zdi.Invoker) error {
@@ -76,17 +86,17 @@ func assignLog(value reflect.Value, app *App, name string) error {
 }
 
 func assignApp(value reflect.Value, app *App) {
-	valueOf := reflect.Indirect(value)
-	api := -1
-	for i := 0; i < valueOf.NumField(); i++ {
-		if valueOf.Field(i).Type().Name() == "App" {
-			api = i
-			break
-		}
+	if value.Kind() != reflect.Ptr || value.IsNil() {
+		return
 	}
 
-	if api != -1 {
-		valueOf.Field(api).Set(reflect.ValueOf(*app))
-		// return fmt.Errorf("%s not a legitimate controller", controller)
+	valueOf := value.Elem()
+	appType := reflect.TypeOf(App{})
+	for i := 0; i < valueOf.NumField(); i++ {
+		if valueOf.Field(i).Type() != appType {
+			continue
+		}
+		_ = zreflect.SetUnexportedField(value, valueOf.Type().Field(i).Name, *app)
+		return
 	}
 }

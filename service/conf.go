@@ -100,7 +100,7 @@ func (b BaseConf) fix(c *gconf.Confhub, bc BaseConf) BaseConf {
 		bc.Port = baseConf.Port
 	}
 
-	if !m.Has("HotReload") {
+	if !m.Has("hot_reload") {
 		bc.HotReload = baseConf.HotReload
 	}
 
@@ -119,14 +119,7 @@ func (b BaseConf) Reload(r *Web, conf *Conf) {
 		return
 	}
 
-	var port int
-	addr := strings.SplitN(nb.Port, ":", 2)
-	if len(addr) != 2 {
-		port = ztype.ToInt(port)
-	} else {
-		port = ztype.ToInt(addr[1])
-	}
-
+	port := parsePort(nb.Port)
 	port, _ = znet.Port(port, false)
 	if port == 0 {
 		zlog.Errorf("port is not valid:%s", nb.Port)
@@ -134,6 +127,16 @@ func (b BaseConf) Reload(r *Web, conf *Conf) {
 	}
 
 	_ = r.Restart()
+}
+
+// parsePort extracts the port from values such as "8080", ":8080" or
+// "127.0.0.1:8080". It returns 0 when the input is not a port.
+func parsePort(addr string) int {
+	addr = strings.TrimSpace(addr)
+	if i := strings.LastIndex(addr, ":"); i >= 0 {
+		addr = addr[i+1:]
+	}
+	return ztype.ToInt(addr)
 }
 
 var (
