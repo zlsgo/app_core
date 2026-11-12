@@ -64,9 +64,6 @@ type BaseConf struct {
 
 	// LogMaxAge log max age
 	LogMaxAge int `z:"log_max_age,omitempty"`
-
-	// AutomaticEnv automatically loads environment variables
-	AutomaticEnv bool `z:"automatic_env,omitempty"`
 }
 
 func init() {
@@ -177,6 +174,11 @@ func (c *Conf) Get(key string) ztype.Type {
 	return c.cfg.GetAll().Get(key)
 }
 
+// GetAll retrieves all configuration values as a map.
+func (c *Conf) GetAll() ztype.Map {
+	return c.cfg.GetAll()
+}
+
 // Set updates the value of a configuration key.
 func (c *Conf) Set(key string, value interface{}) {
 	c.cfg.Set(key, value)
@@ -191,9 +193,11 @@ func (c *Conf) Unmarshal(key string, rawVal interface{}) error {
 // NewConf creates a new Conf object with the given options.
 func NewConf(opt ...func(o gconf.Options) gconf.Options) func(di zdi.Injector) *Conf {
 	cfg := gconf.New(ConfFileName, func(o gconf.Options) gconf.Options {
-		o.EnvPrefix = AppName
+		o.EnvPrefix = strings.ToUpper(AppName)
 		o.AutoCreate = true
 		o.PrimaryAliss = "dev"
+		o.EnvKeyReplacer = "_"
+
 		for i := range opt {
 			o = opt[i](o)
 		}
