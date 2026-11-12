@@ -125,6 +125,8 @@ func InitModule(modules []Module, app *App) (err error) {
 		app.DI.(zdi.TypeMapper).Map(modules)
 	}
 
+	app.Conf.ApplyDefaults()
+
 	return app.DI.InvokeWithErrorOnly(func() error {
 		var (
 			tasks *[]Task
@@ -237,7 +239,7 @@ func InitModule(modules []Module, app *App) (err error) {
 					return
 				}
 				if e.Op == fsnotify.Write {
-					app.Conf.autoUnmarshal()
+					app.Conf.refresh()
 					for _, fn := range app.Conf.reloads {
 						if err := app.DI.InvokeWithErrorOnly(fn); err != nil {
 							zlog.Error(err)

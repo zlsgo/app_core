@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/sohaha/zlsgo v1.7.23-0.20261111035719-647ce39929fa
-	github.com/zlsgo/conf v0.0.0-20261112072038-c64a451ba82f
+	github.com/zlsgo/conf v0.0.0-20261112111202-d6a38f02f6ea
 )
 
 require (

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/sohaha/zlsgo/ztime"
 	"github.com/zlsgo/app_core/common"
@@ -164,9 +165,12 @@ var (
 type Conf struct {
 	cfg *gconf.Confhub // cfg is used to manage the configuration settings.
 
-	Base          BaseConf      // Base represents the base configuration settings.
-	autoUnmarshal func()        `z:"-"`
-	reloads       []interface{} `z:"-"`
+	Base BaseConf // Base represents the base configuration settings.
+
+	mu         sync.Mutex    // mu guards applied, as module construction and conf reads may happen in different places.
+	applied    int           // applied is the number of DefaultConf entries already applied.
+	unmarshals []func()      `z:"-"` // unmarshals holds closures that unmarshal file values back into default pointers; rerun on hot reload.
+	reloads    []interface{} `z:"-"`
 }
 
 // Get retrieves the value associated with the given key from the Conf object.
@@ -207,11 +211,12 @@ func NewConf(opt ...func(o gconf.Options) gconf.Options) func(di zdi.Injector) *
 	return func(di zdi.Injector) *Conf {
 		c := &Conf{cfg: cfg}
 
-		delay, autoUnmarshal := setConf(c, DefaultConf)
+		delay := setConf(c, DefaultConf)
+		c.applied = len(DefaultConf)
 
 		common.Fatal(cfg.Read())
 		delay()
-		autoUnmarshal()
+		c.refresh()
 
 		common.Fatal(cfg.Unmarshal(&c))
 
@@ -219,11 +224,45 @@ func NewConf(opt ...func(o gconf.Options) gconf.Options) func(di zdi.Injector) *
 		baseConf = baseConf.fix(cfg, c.Base)
 		c.Base = baseConf
 
-		c.autoUnmarshal = autoUnmarshal
-
 		ztime.SetTimeZone(int(c.Base.Zone))
 
 		return c
+	}
+}
+
+// ApplyDefaults applies default configurations registered after NewConf ran.
+//
+// NewConf snapshots DefaultConf at construction time, so entries appended
+// afterwards are never seen. Modules typically register their defaults in
+// New(), and if *service.Conf is constructed first (e.g. with a
+// RegModule(cfg *service.Conf) signature), those module defaults are lost.
+// InitModule calls this before the module's Load to land late-registered
+// defaults.
+func (c *Conf) ApplyDefaults() {
+	c.mu.Lock()
+	if c.applied >= len(DefaultConf) {
+		c.mu.Unlock()
+		return
+	}
+	pending := make([]interface{}, len(DefaultConf)-c.applied)
+	copy(pending, DefaultConf[c.applied:])
+	c.applied = len(DefaultConf)
+	c.mu.Unlock()
+
+	for i := range pending {
+		setConf(c, pending[i:i+1])()
+	}
+
+	// SetDefault does not refresh the conf cache; rebuild it once so subsequent
+	// non-forced Get/Unmarshal calls see the new defaults.
+	c.cfg.GetAll(true)
+	c.refresh()
+}
+
+// refresh re-unmarshals the config file values back into each module's Options pointer.
+func (c *Conf) refresh() {
+	for _, f := range c.unmarshals {
+		f()
 	}
 }
 
@@ -268,9 +307,15 @@ func getConfName(t reflect.Value) (key string, isVar bool) {
 	return
 }
 
-func setConf(conf *Conf, value []interface{}) (func(), func()) {
-	confs, disableDebug, autoUnmarshal := ztype.Map{}, false, []func(){}
-	setConf := func(disableWrite bool) func(key string, value interface{}) {
+// setConf writes a batch of default configurations into the conf hub and
+// returns the deferred actions that must run after Read.
+//
+// Pointer-typed configs also register an unmarshal closure: after Read, file
+// values are written back into the original struct (only keys present in the
+// file are overwritten), so code-level defaults set in New(opt) are not wiped.
+func setConf(conf *Conf, values []interface{}) (delay func()) {
+	confs, disableDebug := ztype.Map{}, false
+	set := func(disableWrite bool) func(key string, value interface{}) {
 		if !disableWrite {
 			return conf.cfg.SetDefault
 		}
@@ -279,9 +324,9 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 		}
 	}
 
-	for k := range value {
-		i := k
-		v := reflect.ValueOf(value[i])
+	for idx := range values {
+		i := idx
+		v := reflect.ValueOf(values[i])
 		isPtr := v.Kind() == reflect.Ptr
 		name, _ := getConfName(v)
 
@@ -295,7 +340,7 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 
 		r := v.MethodByName("Reload")
 		if r.IsValid() && r.Kind() == reflect.Func {
-			// TODO: 考虑使用 reflect.DeepEqual 来判断是否需要通知
+			// TODO: consider using reflect.DeepEqual to decide whether to notify
 			conf.reloads = append(conf.reloads, r.Interface())
 		}
 
@@ -304,17 +349,17 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 			p.Call(nil)
 		}
 
-		set := setConf(disableWrite)
+		put := set(disableWrite)
 		typ := reflect.Indirect(v).Type()
 
 		switch typ.Kind() {
 		case reflect.Struct:
-			m := ztype.ToMap(value[i])
+			m := ztype.ToMap(values[i])
 			if name == "base" {
 				disableDebug = m.Get("DisableDebug").Bool()
-				set(name, map[string]interface{}(m))
+				put(name, map[string]interface{}(m))
 			} else {
-				set(name, m)
+				put(name, m)
 			}
 		case reflect.Slice:
 			switch typ.Elem().Kind() {
@@ -323,17 +368,17 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 				for i := 0; i < v.Len(); i++ {
 					m[i] = ztype.ToMap(v.Index(i).Interface())
 				}
-				set(name, m)
+				put(name, m)
 			default:
-				set(name, v)
+				put(name, v)
 			}
 		default:
-			set(name, value[i])
+			put(name, values[i])
 		}
 
 		if isPtr {
-			autoUnmarshal = append(autoUnmarshal, func() {
-				_ = conf.cfg.UnmarshalKey(name, value[i], true)
+			conf.unmarshals = append(conf.unmarshals, func() {
+				_ = conf.cfg.UnmarshalKey(name, values[i], true)
 			})
 		}
 	}
@@ -343,12 +388,8 @@ func setConf(conf *Conf, value []interface{}) (func(), func()) {
 	}
 
 	return func() {
-			for k, v := range confs {
-				conf.cfg.SetDefault(k, v)
-			}
-		}, func() {
-			for _, f := range autoUnmarshal {
-				f()
-			}
+		for k, v := range confs {
+			conf.cfg.SetDefault(k, v)
 		}
+	}
 }

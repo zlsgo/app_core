@@ -59,3 +59,98 @@ zone = 8
 		t.Fatal("log_show_date from file should be applied")
 	}
 }
+
+type lateOptions struct {
+	Prefix string `json:"prefix"`
+	Title  string `json:"title"`
+	Secret string `json:"-"`
+}
+
+func (lateOptions) ConfKey() string { return "late" }
+
+func (lateOptions) DisableWrite() bool { return true }
+
+func TestApplyDefaultsAfterConfBuilt(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lateconf")
+	content := `[late]
+prefix = "/from-file"
+`
+	if err := os.WriteFile(path+".toml", []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldName, oldBase, oldDefaults := ConfFileName, baseConf, DefaultConf
+	ConfFileName = path
+	baseConf = BaseConf{Zone: 8, Port: "3788", HotReload: true}
+	DefaultConf = nil
+	t.Cleanup(func() {
+		ConfFileName, baseConf, DefaultConf = oldName, oldBase, oldDefaults
+	})
+
+	c := NewConf()(zdi.New())
+
+	opts := &lateOptions{Prefix: "/code", Title: "code-title", Secret: "in-memory"}
+	DefaultConf = append(DefaultConf, opts)
+
+	c.ApplyDefaults()
+
+	if got := c.Get("late.prefix").String(); got != "/from-file" {
+		t.Fatalf("late.prefix = %q, want file value", got)
+	}
+	if got := c.Get("late.title").String(); got != "code-title" {
+		t.Fatalf("late.title = %q, want code default", got)
+	}
+
+	if opts.Prefix != "/from-file" {
+		t.Fatalf("opts.Prefix = %q, want file value applied to struct", opts.Prefix)
+	}
+	if opts.Title != "code-title" {
+		t.Fatalf("opts.Title = %q, want code default kept", opts.Title)
+	}
+	if opts.Secret != "in-memory" {
+		t.Fatalf("opts.Secret = %q, want untouched", opts.Secret)
+	}
+
+	c.ApplyDefaults()
+	if got := c.Get("late.prefix").String(); got != "/from-file" {
+		t.Fatalf("after second ApplyDefaults late.prefix = %q", got)
+	}
+}
+
+func TestApplyDefaultsValueType(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lateconf2")
+	if err := os.WriteFile(path+".toml", []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldName, oldBase, oldDefaults := ConfFileName, baseConf, DefaultConf
+	ConfFileName = path
+	baseConf = BaseConf{Zone: 8, Port: "3788", HotReload: true}
+	DefaultConf = nil
+	t.Cleanup(func() {
+		ConfFileName, baseConf, DefaultConf = oldName, oldBase, oldDefaults
+	})
+
+	c := NewConf()(zdi.New())
+
+	DefaultConf = append(DefaultConf, lateValueOptions{Driver: "sqlite"})
+	c.ApplyDefaults()
+
+	var loaded lateValueOptions
+	if err := c.Unmarshal("latevalue", &loaded); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Driver != "sqlite" {
+		t.Fatalf("Driver = %q, want sqlite", loaded.Driver)
+	}
+}
+
+type lateValueOptions struct {
+	Driver string `json:"driver"`
+}
+
+func (lateValueOptions) ConfKey() string { return "latevalue" }
+
+func (lateValueOptions) DisableWrite() bool { return true }
