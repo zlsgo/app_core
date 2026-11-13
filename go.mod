@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/sohaha/zlsgo v1.7.23-0.20261111035719-647ce39929fa
+	github.com/spf13/viper v1.18.2-0.20240325123913-8b5a9ae6203d
 	github.com/zlsgo/conf v0.0.0-20261112111202-d6a38f02f6ea
 )
 
@@ -19,7 +20,6 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.18.2-0.20240325123913-8b5a9ae6203d // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
